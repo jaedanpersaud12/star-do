@@ -39,7 +39,7 @@ namespace StarDo
 
         private void OnDayStarted(object sender, DayStartedEventArgs e)
         {
-            this.TaskManager?.ProcessDayStart(Game1.Date.TotalDays);
+            this.TaskManager?.ProcessDayStart(Game1.Date.TotalDays, Game1.Date.DayOfMonth);
         }
 
         private void OpenPlanner()

@@ -13,6 +13,6 @@ namespace StarDo.Models
     {
         Daily,
         Weekly,
-        LongTerm
+        Monthly
     }
 }

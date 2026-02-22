@@ -14,6 +14,7 @@ namespace StarDo.Services
         public List<string> SubTasks { get; set; } = new();
         public string Group { get; set; } = "Daily Routines";
         public string[] Seasons { get; set; } // null = all seasons
+        public TaskPriority Priority { get; set; } = TaskPriority.Daily;
 
         public bool IsRelevantForSeason(string season)
         {
@@ -133,6 +134,7 @@ namespace StarDo.Services
                 Description = "Key crops to plant and track in spring",
                 Category = TaskCategory.Farm,
                 Group = "Seasonal",
+                Priority = TaskPriority.Monthly,
                 Seasons = new[] { "spring" },
                 SubTasks = new()
                 {
@@ -151,6 +153,7 @@ namespace StarDo.Services
                 Description = "Key crops to plant and track in summer",
                 Category = TaskCategory.Farm,
                 Group = "Seasonal",
+                Priority = TaskPriority.Monthly,
                 Seasons = new[] { "summer" },
                 SubTasks = new()
                 {
@@ -169,6 +172,7 @@ namespace StarDo.Services
                 Description = "Key crops to plant and track in fall",
                 Category = TaskCategory.Farm,
                 Group = "Seasonal",
+                Priority = TaskPriority.Monthly,
                 Seasons = new[] { "fall" },
                 SubTasks = new()
                 {
@@ -187,6 +191,7 @@ namespace StarDo.Services
                 Description = "Things to do when crops can't grow outside",
                 Category = TaskCategory.Farm,
                 Group = "Seasonal",
+                Priority = TaskPriority.Monthly,
                 Seasons = new[] { "winter" },
                 SubTasks = new()
                 {
@@ -205,6 +210,7 @@ namespace StarDo.Services
                 Description = "Forage items available this season",
                 Category = TaskCategory.Farm,
                 Group = "Seasonal",
+                Priority = TaskPriority.Monthly,
                 Seasons = new[] { "spring", "summer", "fall" },
                 SubTasks = new()
                 {
@@ -225,6 +231,7 @@ namespace StarDo.Services
                 Description = "Give loved gifts and talk to villagers",
                 Category = TaskCategory.Social,
                 Group = "Long-term Goals",
+                Priority = TaskPriority.Weekly,
                 SubTasks = new()
                 {
                     "Give 2 loved gifts per week to targets",
@@ -240,6 +247,7 @@ namespace StarDo.Services
                 Description = "Track progress toward 100% perfection",
                 Category = TaskCategory.Goals,
                 Group = "Long-term Goals",
+                Priority = TaskPriority.Monthly,
                 SubTasks = new()
                 {
                     "All fish caught",
@@ -260,6 +268,7 @@ namespace StarDo.Services
                 Description = "Prep and goals for a mining day",
                 Category = TaskCategory.Goals,
                 Group = "Long-term Goals",
+                Priority = TaskPriority.Weekly,
                 SubTasks = new()
                 {
                     "Bring food / healing items",
@@ -276,6 +285,7 @@ namespace StarDo.Services
                 Description = "Track fishing collection and progress",
                 Category = TaskCategory.Goals,
                 Group = "Long-term Goals",
+                Priority = TaskPriority.Monthly,
                 SubTasks = new()
                 {
                     "Check season-specific fish",
@@ -311,7 +321,7 @@ namespace StarDo.Services
                 Title = template.Name,
                 Notes = template.Description,
                 Category = template.Category,
-                Priority = TaskPriority.Daily,
+                Priority = template.Priority,
                 IsRecurring = true,
                 TemplateId = template.Id,
                 CreatedDay = currentDay

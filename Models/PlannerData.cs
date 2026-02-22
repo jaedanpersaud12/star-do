@@ -4,7 +4,7 @@ namespace StarDo.Models
 {
     public class PlannerData
     {
-        public int DataVersion { get; set; } = 2;
+        public int DataVersion { get; set; } = 3;
         public List<PlannerTask> Tasks { get; set; } = new();
         public int LastProcessedDay { get; set; }
     }

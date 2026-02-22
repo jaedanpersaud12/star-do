@@ -38,7 +38,7 @@ namespace StarDo.UI.Components
             new Color(153, 102, 204), // Quests - purple
         };
 
-        private static readonly string[] PriorityLabels = { "Daily", "Weekly", "Long" };
+        private static readonly string[] PriorityLabels = { "Daily", "Weekly", "Monthly" };
         private static readonly Color[] PriorityColors =
         {
             new Color(204, 51, 51),   // Daily - red
@@ -128,6 +128,15 @@ namespace StarDo.UI.Components
             {
                 int tmplW = (int)Game1.smallFont.MeasureString("T").X + 12;
                 DrawBadge(b, "T", badgeX, badgeY, tmplW, badgeH, new Color(120, 100, 160), alpha);
+                badgeX += tmplW + 6;
+            }
+
+            // Completion count badge
+            if (task.CompletionCount > 0)
+            {
+                string countLabel = $"\u00d7{task.CompletionCount}";
+                int countW = (int)Game1.smallFont.MeasureString(countLabel).X + 16;
+                DrawBadge(b, countLabel, badgeX, badgeY, countW, badgeH, new Color(60, 160, 60), alpha);
             }
 
             // ── Bottom row: title + progress ──

@@ -29,8 +29,8 @@ namespace StarDo.UI.Pages
         // Priority-grouped task lists
         private List<PlannerTask> dailyTasks = new();
         private List<PlannerTask> weeklyTasks = new();
-        private List<PlannerTask> longTermTasks = new();
-        private List<PlannerTask> doneTodayTasks = new();
+        private List<PlannerTask> monthlyTasks = new();
+        private List<PlannerTask> completedTasks = new();
         private int totalActiveCount;
 
         private string hoveredTaskId;
@@ -40,6 +40,7 @@ namespace StarDo.UI.Pages
         private readonly int lineH;
         private readonly int filterBarHeight;
         private readonly int toolbarHeight;
+        private readonly int contextBarHeight;
         private readonly int summaryHeight;
         private readonly int sectionHeaderHeight;
         private readonly int sectionGap;
@@ -59,8 +60,10 @@ namespace StarDo.UI.Pages
         // Section header colors
         private static readonly Color DailyColor = new Color(204, 51, 51);
         private static readonly Color WeeklyColor = new Color(204, 153, 0);
-        private static readonly Color LongTermColor = new Color(102, 102, 102);
-        private static readonly Color DoneTodayColor = new Color(60, 160, 60);
+        private static readonly Color MonthlyColor = new Color(102, 140, 180);
+        private static readonly Color CompletedColor = new Color(60, 160, 60);
+
+        private static readonly string[] DayNames = { "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday" };
 
         public TaskListPage(TaskManager taskManager, Rectangle contentArea, PlannerMenu parentMenu)
         {
@@ -69,15 +72,15 @@ namespace StarDo.UI.Pages
             this.contentArea = contentArea;
 
             this.lineH = (int)Game1.smallFont.MeasureString("Tg").Y;
-            // drawTextureBox (384,396,15,15) at 4f = 20px border per side = 40px overhead
-            this.btnH = this.lineH + 48; // text + 40px borders + 4px padding each side
+            this.btnH = this.lineH + 48;
             this.filterBarHeight = this.btnH + 8;
             this.toolbarHeight = this.btnH + 8;
+            this.contextBarHeight = this.lineH * 3 + 24;
             this.summaryHeight = this.lineH + 8;
             this.sectionHeaderHeight = this.lineH + 16;
             this.sectionGap = 8;
 
-            // Filter buttons — text + 40px border overhead + 16px horizontal padding
+            // Filter buttons
             int filterX = contentArea.X;
             for (int i = 0; i < filterLabels.Length; i++)
             {
@@ -113,9 +116,9 @@ namespace StarDo.UI.Pages
                 "newTaskBtn"
             ) { myID = 8001 };
 
-            // Scrollable list
-            int listTop = contentArea.Y + this.filterBarHeight + this.toolbarHeight + this.summaryHeight;
-            int listHeight = contentArea.Height - this.filterBarHeight - this.toolbarHeight - this.summaryHeight - 8;
+            // Scrollable list — below context bar and summary
+            int listTop = contentArea.Y + this.filterBarHeight + this.toolbarHeight + this.contextBarHeight + this.summaryHeight;
+            int listHeight = contentArea.Height - this.filterBarHeight - this.toolbarHeight - this.contextBarHeight - this.summaryHeight - 8;
             this.scrollableList = new ScrollableListComponent(
                 new Rectangle(contentArea.X, listTop, contentArea.Width, Math.Max(listHeight, 100))
             );
@@ -128,13 +131,9 @@ namespace StarDo.UI.Pages
             var allActive = this.taskManager.GetActiveTasks(this.activeFilter);
             this.dailyTasks = allActive.Where(t => t.Priority == TaskPriority.Daily).ToList();
             this.weeklyTasks = allActive.Where(t => t.Priority == TaskPriority.Weekly).ToList();
-            this.longTermTasks = allActive.Where(t => t.Priority == TaskPriority.LongTerm).ToList();
-            this.doneTodayTasks = this.taskManager.GetCompletedToday(Game1.Date.TotalDays);
+            this.monthlyTasks = allActive.Where(t => t.Priority == TaskPriority.Monthly).ToList();
+            this.completedTasks = this.taskManager.GetCompletedTasks(this.activeFilter);
             this.totalActiveCount = allActive.Count;
-
-            // Apply category filter to done-today too
-            if (this.activeFilter.HasValue)
-                this.doneTodayTasks = this.doneTodayTasks.Where(t => t.Category == this.activeFilter.Value).ToList();
 
             int totalHeight = 0;
 
@@ -142,10 +141,10 @@ namespace StarDo.UI.Pages
                 totalHeight += this.sectionHeaderHeight + this.dailyTasks.Count * TaskRowComponent.RowHeight + this.sectionGap;
             if (this.weeklyTasks.Count > 0)
                 totalHeight += this.sectionHeaderHeight + this.weeklyTasks.Count * TaskRowComponent.RowHeight + this.sectionGap;
-            if (this.longTermTasks.Count > 0)
-                totalHeight += this.sectionHeaderHeight + this.longTermTasks.Count * TaskRowComponent.RowHeight + this.sectionGap;
-            if (this.doneTodayTasks.Count > 0)
-                totalHeight += this.sectionHeaderHeight + this.doneTodayTasks.Count * TaskRowComponent.RowHeight + this.sectionGap;
+            if (this.monthlyTasks.Count > 0)
+                totalHeight += this.sectionHeaderHeight + this.monthlyTasks.Count * TaskRowComponent.RowHeight + this.sectionGap;
+            if (this.completedTasks.Count > 0)
+                totalHeight += this.sectionHeaderHeight + this.completedTasks.Count * TaskRowComponent.RowHeight + this.sectionGap;
 
             if (totalHeight == 0)
                 totalHeight = 100;
@@ -218,17 +217,17 @@ namespace StarDo.UI.Pages
                     return;
                 rowY += this.sectionGap;
             }
-            if (this.longTermTasks.Count > 0)
+            if (this.monthlyTasks.Count > 0)
             {
                 rowY += this.sectionHeaderHeight;
-                if (this.HandleTaskGroupClick(this.longTermTasks, x, y, ref rowY, listBounds, rowWidth))
+                if (this.HandleTaskGroupClick(this.monthlyTasks, x, y, ref rowY, listBounds, rowWidth))
                     return;
                 rowY += this.sectionGap;
             }
-            if (this.doneTodayTasks.Count > 0)
+            if (this.completedTasks.Count > 0)
             {
                 rowY += this.sectionHeaderHeight;
-                if (this.HandleTaskGroupClick(this.doneTodayTasks, x, y, ref rowY, listBounds, rowWidth))
+                if (this.HandleTaskGroupClick(this.completedTasks, x, y, ref rowY, listBounds, rowWidth))
                     return;
             }
         }
@@ -287,7 +286,7 @@ namespace StarDo.UI.Pages
             int rowY = listBounds.Y - this.scrollableList.ScrollOffset;
             int rowWidth = listBounds.Width - 40;
 
-            var allGroups = new[] { this.dailyTasks, this.weeklyTasks, this.longTermTasks };
+            var allGroups = new[] { this.dailyTasks, this.weeklyTasks, this.monthlyTasks };
             foreach (var group in allGroups)
             {
                 if (group.Count == 0) continue;
@@ -328,10 +327,10 @@ namespace StarDo.UI.Pages
                 }
             }
 
-            if (!string.IsNullOrEmpty(task.TemplateId))
+            if (task.CompletionCount > 0)
             {
                 if (tip.Length > 0) tip += "\n";
-                tip += "(from template)";
+                tip += $"Completed {task.CompletionCount} times";
             }
 
             return string.IsNullOrEmpty(tip) ? null : tip;
@@ -353,7 +352,6 @@ namespace StarDo.UI.Pages
                     fb.X, fb.Y, fb.Width, fb.Height,
                     filterBg, 4f, false);
 
-                // Color accent line at bottom of active filter
                 if (isActive)
                 {
                     b.Draw(Game1.staminaRect,
@@ -373,11 +371,14 @@ namespace StarDo.UI.Pages
             DrawButton(b, "+ Add", this.addButton.bounds, Color.LightGreen);
             DrawButton(b, "+ New Task", this.newTaskButton.bounds, new Color(180, 210, 255));
 
+            // ── Game Context Bar ──
+            this.DrawContextBar(b);
+
             // ── Summary line ──
-            int summaryY = contentArea.Y + this.filterBarHeight + this.toolbarHeight;
+            int summaryY = contentArea.Y + this.filterBarHeight + this.toolbarHeight + this.contextBarHeight;
             string summary = $"{this.totalActiveCount} active";
-            if (this.doneTodayTasks.Count > 0)
-                summary += $"  /  {this.doneTodayTasks.Count} done today";
+            if (this.completedTasks.Count > 0)
+                summary += $"  /  {this.completedTasks.Count} completed";
             if (this.activeFilter.HasValue)
                 summary += $"  ({this.filterLabels[(int)this.activeFilter.Value + 1]})";
             b.DrawString(Game1.smallFont, summary,
@@ -391,7 +392,7 @@ namespace StarDo.UI.Pages
             int rowWidth = listBounds.Width - 40;
 
             bool hasAnyTasks = this.dailyTasks.Count > 0 || this.weeklyTasks.Count > 0 ||
-                               this.longTermTasks.Count > 0 || this.doneTodayTasks.Count > 0;
+                               this.monthlyTasks.Count > 0 || this.completedTasks.Count > 0;
 
             if (!hasAnyTasks)
             {
@@ -405,7 +406,6 @@ namespace StarDo.UI.Pages
             }
             else
             {
-                // Daily section
                 if (this.dailyTasks.Count > 0)
                 {
                     this.DrawSectionHeader(b, $"Daily ({this.dailyTasks.Count})", DailyColor, listBounds, rowY);
@@ -419,7 +419,6 @@ namespace StarDo.UI.Pages
                     rowY += this.sectionGap;
                 }
 
-                // Weekly section
                 if (this.weeklyTasks.Count > 0)
                 {
                     this.DrawSectionHeader(b, $"Weekly ({this.weeklyTasks.Count})", WeeklyColor, listBounds, rowY);
@@ -433,12 +432,11 @@ namespace StarDo.UI.Pages
                     rowY += this.sectionGap;
                 }
 
-                // Long-term section
-                if (this.longTermTasks.Count > 0)
+                if (this.monthlyTasks.Count > 0)
                 {
-                    this.DrawSectionHeader(b, $"Long-term ({this.longTermTasks.Count})", LongTermColor, listBounds, rowY);
+                    this.DrawSectionHeader(b, $"Monthly ({this.monthlyTasks.Count})", MonthlyColor, listBounds, rowY);
                     rowY += this.sectionHeaderHeight;
-                    foreach (var task in this.longTermTasks)
+                    foreach (var task in this.monthlyTasks)
                     {
                         if (rowY + TaskRowComponent.RowHeight > listBounds.Y && rowY < listBounds.Bottom)
                             TaskRowComponent.Draw(b, task, listBounds.X, rowY, rowWidth, this.hoveredTaskId == task.Id);
@@ -447,12 +445,11 @@ namespace StarDo.UI.Pages
                     rowY += this.sectionGap;
                 }
 
-                // Done Today section
-                if (this.doneTodayTasks.Count > 0)
+                if (this.completedTasks.Count > 0)
                 {
-                    this.DrawSectionHeader(b, $"Done Today ({this.doneTodayTasks.Count})", DoneTodayColor, listBounds, rowY);
+                    this.DrawSectionHeader(b, $"Completed ({this.completedTasks.Count})", CompletedColor, listBounds, rowY);
                     rowY += this.sectionHeaderHeight;
-                    foreach (var task in this.doneTodayTasks)
+                    foreach (var task in this.completedTasks)
                     {
                         if (rowY + TaskRowComponent.RowHeight > listBounds.Y && rowY < listBounds.Bottom)
                             TaskRowComponent.Draw(b, task, listBounds.X, rowY, rowWidth, this.hoveredTaskId == task.Id, dimmed: true);
@@ -469,17 +466,112 @@ namespace StarDo.UI.Pages
                 IClickableMenu.drawHoverText(b, this.hoverTooltip, Game1.smallFont);
         }
 
+        private void DrawContextBar(SpriteBatch b)
+        {
+            int barY = contentArea.Y + this.filterBarHeight + this.toolbarHeight;
+            int barX = contentArea.X;
+            int barW = contentArea.Width;
+
+            // Background
+            b.Draw(Game1.staminaRect, new Rectangle(barX, barY, barW, this.contextBarHeight),
+                new Color(60, 50, 40) * 0.12f);
+
+            int textX = barX + 8;
+            int textY = barY + 8;
+
+            // Line 1: Date + day of week
+            int dom = Game1.Date.DayOfMonth;
+            int dow = dom % 7; // 0=Sun, 1=Mon, ..., 6=Sat
+            string dayName = DayNames[dow];
+            string seasonStr = Game1.currentSeason ?? "spring";
+            string seasonCap = char.ToUpper(seasonStr[0]) + seasonStr[1..];
+            string dateLine = $"{dayName}, {seasonCap} {dom}, Year {Game1.Date.Year}";
+
+            // Weather
+            string weather = "Sunny";
+            if (Game1.isLightning) weather = "Stormy";
+            else if (Game1.isRaining) weather = "Rainy";
+            else if (Game1.isSnowing) weather = "Snowy";
+
+            string line1 = $"{dateLine}  |  {weather}";
+            Utility.drawTextWithShadow(b, line1, Game1.smallFont,
+                new Vector2(textX, textY), Game1.textColor, 1f, -1f, -1, -1, 1f, 3);
+            textY += this.lineH + 4;
+
+            // Line 2: Luck + season progress
+            double luck = Game1.player.DailyLuck;
+            string luckStr;
+            Color luckColor;
+            if (luck >= 0.07) { luckStr = "Great luck!"; luckColor = new Color(0, 180, 0); }
+            else if (luck >= 0.02) { luckStr = "Good luck"; luckColor = new Color(100, 180, 50); }
+            else if (luck >= -0.02) { luckStr = "Neutral luck"; luckColor = Color.Gray; }
+            else { luckStr = "Bad luck"; luckColor = new Color(200, 60, 60); }
+
+            int daysLeft = 28 - dom;
+            Utility.drawTextWithShadow(b, luckStr, Game1.smallFont,
+                new Vector2(textX, textY), luckColor, 1f, -1f, -1, -1, 1f, 3);
+
+            int luckW = (int)Game1.smallFont.MeasureString(luckStr + "  |  ").X;
+            b.DrawString(Game1.smallFont, "  |  ",
+                new Vector2(textX + (int)Game1.smallFont.MeasureString(luckStr).X, textY), Color.Gray * 0.5f);
+            b.DrawString(Game1.smallFont, $"{daysLeft} days left in {seasonCap}",
+                new Vector2(textX + luckW, textY), Color.Gray);
+            textY += this.lineH + 4;
+
+            // Line 3: Birthdays + festivals
+            var infoItems = new List<string>();
+
+            try
+            {
+                foreach (var npc in Utility.getAllCharacters())
+                {
+                    if (npc.Birthday_Season != null &&
+                        npc.Birthday_Season.Equals(seasonStr, StringComparison.OrdinalIgnoreCase) &&
+                        npc.Birthday_Day == dom)
+                    {
+                        infoItems.Add($"{npc.displayName}'s Birthday!");
+                    }
+                }
+            }
+            catch { /* safely ignore if NPC data unavailable */ }
+
+            try
+            {
+                for (int d = 0; d <= 3; d++)
+                {
+                    int checkDay = dom + d;
+                    if (checkDay > 28) break;
+                    if (Utility.isFestivalDay(checkDay, seasonStr))
+                    {
+                        infoItems.Add(d == 0 ? "Festival today!" : $"Festival in {d} days");
+                        break;
+                    }
+                }
+            }
+            catch { /* safely ignore */ }
+
+            if (infoItems.Count > 0)
+            {
+                string infoLine = string.Join("  |  ", infoItems);
+                b.DrawString(Game1.smallFont, infoLine,
+                    new Vector2(textX, textY), new Color(180, 100, 40));
+            }
+            else
+            {
+                b.DrawString(Game1.smallFont, "No events today",
+                    new Vector2(textX, textY), Color.Gray * 0.5f);
+            }
+        }
+
         private void DrawSectionHeader(SpriteBatch b, string text, Color color, Rectangle listBounds, int y)
         {
             if (y + this.sectionHeaderHeight <= listBounds.Y || y >= listBounds.Bottom)
                 return;
 
-            // Colored accent line
             b.Draw(Game1.staminaRect,
                 new Rectangle(listBounds.X + 4, y + 6, listBounds.Width - 48, 2),
                 color * 0.4f);
 
-            // Section label
             Utility.drawTextWithShadow(b, text, Game1.smallFont,
                 new Vector2(listBounds.X + 8, y + 10),
                 color * 0.9f, 1f, -1f, -1, -1, 1f, 3);
@@ -512,7 +604,8 @@ namespace StarDo.UI.Pages
                 Title = text,
                 CreatedDay = Game1.Date.TotalDays,
                 Category = this.activeFilter ?? TaskCategory.Farm,
-                Priority = TaskPriority.Daily
+                Priority = TaskPriority.Daily,
+                IsRecurring = true
             };
 
             this.taskManager.AddTask(task);

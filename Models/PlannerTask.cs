@@ -10,12 +10,13 @@ namespace StarDo.Models
         public string Notes { get; set; } = "";
         public List<SubTask> SubTasks { get; set; } = new();
         public TaskCategory Category { get; set; } = TaskCategory.Farm;
-        public TaskPriority Priority { get; set; } = TaskPriority.LongTerm;
+        public TaskPriority Priority { get; set; } = TaskPriority.Monthly;
         public bool IsCompleted { get; set; }
         public bool IsRecurring { get; set; }
         public string TemplateId { get; set; }
         public int CreatedDay { get; set; }
         public int? CompletedDay { get; set; }
         public int SortOrder { get; set; }
+        public int CompletionCount { get; set; }
     }
 }

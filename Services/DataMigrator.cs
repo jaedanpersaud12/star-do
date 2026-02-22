@@ -14,15 +14,37 @@ namespace StarDo.Services
 
             try
             {
-                // Try reading raw JSON to detect format
                 var raw = helper.Data.ReadJsonFile<JObject>(path);
                 if (raw == null)
                     return new PlannerData();
 
-                // New format has DataVersion field
                 if (raw.ContainsKey("DataVersion"))
                 {
-                    var data = helper.Data.ReadJsonFile<PlannerData>(path);
+                    int version = raw["DataVersion"]?.Value<int>() ?? 0;
+
+                    // v2 → v3: rename LongTerm → Monthly, init CompletionCount
+                    if (version == 2)
+                    {
+                        monitor.Log("Migrating planner data v2 -> v3...", LogLevel.Info);
+                        var tasks = raw["Tasks"] as JArray;
+                        if (tasks != null)
+                        {
+                            foreach (JObject taskObj in tasks)
+                            {
+                                if (taskObj["Priority"]?.ToString() == "LongTerm")
+                                    taskObj["Priority"] = "Monthly";
+
+                                if (taskObj["CompletionCount"] == null)
+                                    taskObj["CompletionCount"] = 0;
+                            }
+                        }
+                        raw["DataVersion"] = 3;
+                        helper.Data.WriteJsonFile(path, raw);
+                        monitor.Log("Migration v2 -> v3 complete.", LogLevel.Info);
+                    }
+
+                    // Deserialize from the (possibly migrated) JObject
+                    var data = raw.ToObject<PlannerData>();
                     if (data == null)
                     {
                         monitor.Log("Failed to deserialize planner data, starting fresh.", LogLevel.Error);
@@ -31,7 +53,7 @@ namespace StarDo.Services
                     return data;
                 }
 
-                // Old format: { "SavedTasks": ["task1", "task2", ...] }
+                // v1: old format { "SavedTasks": ["task1", "task2", ...] }
                 monitor.Log("Migrating old task data to new planner format...", LogLevel.Info);
 
                 var migrated = new PlannerData();
@@ -48,7 +70,7 @@ namespace StarDo.Services
                             {
                                 Title = title,
                                 Category = TaskCategory.Farm,
-                                Priority = TaskPriority.LongTerm,
+                                Priority = TaskPriority.Monthly,
                                 IsRecurring = false,
                                 SortOrder = sortOrder++
                             });
@@ -60,7 +82,6 @@ namespace StarDo.Services
                     monitor.Log("Old save data found but no 'SavedTasks' field detected. Starting fresh.", LogLevel.Warn);
                 }
 
-                // Save in new format immediately
                 helper.Data.WriteJsonFile(path, migrated);
                 monitor.Log($"Migration complete. Converted {migrated.Tasks.Count} tasks.", LogLevel.Info);
 

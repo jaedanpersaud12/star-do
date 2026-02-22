@@ -33,8 +33,8 @@ namespace StarDo.Services
                 }
                 if (!Enum.IsDefined(typeof(TaskPriority), task.Priority))
                 {
-                    this.monitor.Log($"Task '{task.Title}' has invalid priority {(int)task.Priority}, resetting to LongTerm.", LogLevel.Warn);
-                    task.Priority = TaskPriority.LongTerm;
+                    this.monitor.Log($"Task '{task.Title}' has invalid priority {(int)task.Priority}, resetting to Monthly.", LogLevel.Warn);
+                    task.Priority = TaskPriority.Monthly;
                 }
             }
         }
@@ -72,9 +72,14 @@ namespace StarDo.Services
 
             task.IsCompleted = !task.IsCompleted;
             if (task.IsCompleted)
+            {
                 task.CompletedDay = currentDay;
+                task.CompletionCount++;
+            }
             else
+            {
                 task.CompletedDay = null;
+            }
 
             this.Save();
         }
@@ -93,32 +98,40 @@ namespace StarDo.Services
                 .ToList();
         }
 
-        public List<PlannerTask> GetCompletedToday(int currentDay)
+        public List<PlannerTask> GetCompletedTasks(TaskCategory? categoryFilter = null)
         {
-            return this.data.Tasks
-                .Where(t => t.IsCompleted && t.CompletedDay == currentDay)
-                .OrderBy(t => t.SortOrder)
-                .ToList();
+            var query = this.data.Tasks.Where(t => t.IsCompleted);
+
+            if (categoryFilter.HasValue)
+                query = query.Where(t => t.Category == categoryFilter.Value);
+
+            return query.OrderBy(t => t.SortOrder).ToList();
         }
 
-        public List<PlannerTask> GetCompletedNonRecurring()
-        {
-            return this.data.Tasks
-                .Where(t => t.IsCompleted && !t.IsRecurring)
-                .OrderByDescending(t => t.CompletedDay)
-                .ToList();
-        }
-
-        public void ProcessDayStart(int currentDay)
+        public void ProcessDayStart(int currentDay, int dayOfMonth)
         {
             if (currentDay <= this.data.LastProcessedDay)
                 return;
 
             this.data.LastProcessedDay = currentDay;
 
+            bool isMonday = dayOfMonth % 7 == 1;
+            bool isSeasonStart = dayOfMonth == 1;
+
             foreach (var task in this.data.Tasks)
             {
-                if (task.IsRecurring && task.IsCompleted)
+                if (!task.IsRecurring || !task.IsCompleted)
+                    continue;
+
+                bool shouldReset = task.Priority switch
+                {
+                    TaskPriority.Daily => true,
+                    TaskPriority.Weekly => isMonday,
+                    TaskPriority.Monthly => isSeasonStart,
+                    _ => true
+                };
+
+                if (shouldReset)
                 {
                     task.IsCompleted = false;
                     task.CompletedDay = null;
@@ -128,7 +141,7 @@ namespace StarDo.Services
             }
 
             this.Save();
-            this.monitor.Log($"Day {currentDay}: Reset recurring tasks.", LogLevel.Trace);
+            this.monitor.Log($"Day {currentDay} (DoM {dayOfMonth}): Processed resets. Monday={isMonday}, SeasonStart={isSeasonStart}", LogLevel.Trace);
         }
 
         public void RemoveTasksByTemplate(string templateId)

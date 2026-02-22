@@ -32,7 +32,7 @@ namespace StarDo.UI.Pages
 
         private static readonly string[] CategoryNames = { "Farm", "Processing", "Social", "Goals", "Quests" };
         private static readonly int CategoryCount = Enum.GetValues(typeof(TaskCategory)).Length;
-        private static readonly string[] PriorityNames = { "Daily", "Weekly", "Long-term" };
+        private static readonly string[] PriorityNames = { "Daily", "Weekly", "Monthly" };
         private static readonly int PriorityCount = Enum.GetValues(typeof(TaskPriority)).Length;
 
         // Border overhead for drawTextureBox with (384,396,15,15) at 4f = 20px per side
@@ -110,7 +110,7 @@ namespace StarDo.UI.Pages
         // Shared layout calculation — returns Y offsets for all sections
         private void CalcLayout(int startY, int iw, out int titleY, out int notesLabelY, out int notesY,
                                 out int optY, out int[] optBtnWidths, out int[] optBtnX,
-                                out int subLabelY, out int subInputY, out int addBtnW, out int itemsStartY)
+                                out int infoY, out int subLabelY, out int subInputY, out int addBtnW, out int itemsStartY)
         {
             int ix = this.GetInputX();
 
@@ -141,8 +141,12 @@ namespace StarDo.UI.Pages
                 ix + optBtnWidths[0] + optBtnWidths[1] + 16
             };
 
+            // Info lines (reset schedule, completion count, created date)
+            infoY = optY + this.btnH + 8;
+
             // Sub-tasks
-            subLabelY = optY + this.btnH + this.spacing;
+            int infoLines = this.isNew ? 0 : 3;
+            subLabelY = infoY + infoLines * (this.lineH + 4) + this.spacing;
             addBtnW = MeasureBtnWidth("+ Add");
             subInputY = subLabelY + this.lineH + 8;
 
@@ -189,7 +193,7 @@ namespace StarDo.UI.Pages
 
             this.CalcLayout(cy, iw, out int titleY, out int notesLabelY, out int notesY,
                             out int optY, out int[] optBtnWidths, out int[] optBtnX,
-                            out int subLabelY, out int subInputY, out int addBtnW, out int itemsStartY);
+                            out int infoY, out int subLabelY, out int subInputY, out int addBtnW, out int itemsStartY);
 
             // Title input
             if (new Rectangle(ix, titleY, iw, this.inputH).Contains(x, y)) { this.titleInput.Select(); return; }
@@ -286,7 +290,7 @@ namespace StarDo.UI.Pages
 
             this.CalcLayout(cy, iw, out int titleY, out int notesLabelY, out int notesY,
                             out int optY, out int[] optBtnWidths, out int[] optBtnX,
-                            out int subLabelY, out int subInputY, out int addBtnW, out int itemsStartY);
+                            out int infoY, out int subLabelY, out int subInputY, out int addBtnW, out int itemsStartY);
 
             // Title
             Utility.drawTextWithShadow(b, "Title:", Game1.smallFont, new Vector2(ix, cy), Game1.textColor, 1f, -1f, -1, -1, 1f, 3);
@@ -307,6 +311,45 @@ namespace StarDo.UI.Pages
             DrawBtn(b, priText, optBtnX[1], optY, optBtnWidths[1], this.btnH, Color.LightGoldenrodYellow);
             DrawBtn(b, recurText, optBtnX[2], optY, optBtnWidths[2], this.btnH,
                 this.task.IsRecurring ? Color.LightGreen : Color.LightGray);
+
+            // Info lines (for existing tasks)
+            if (!this.isNew)
+            {
+                int iy = infoY;
+                Color infoColor = Color.Gray;
+
+                // Reset schedule
+                string resetInfo = this.task.IsRecurring
+                    ? this.task.Priority switch
+                    {
+                        TaskPriority.Daily => "Resets: Every morning",
+                        TaskPriority.Weekly => "Resets: Every Monday",
+                        TaskPriority.Monthly => "Resets: Start of each season",
+                        _ => "Resets: Every morning"
+                    }
+                    : "One-off task (no reset)";
+                b.DrawString(Game1.smallFont, resetInfo, new Vector2(ix, iy), infoColor);
+                iy += this.lineH + 4;
+
+                // Completion count
+                b.DrawString(Game1.smallFont, $"Completed {this.task.CompletionCount} times",
+                    new Vector2(ix, iy), infoColor);
+                iy += this.lineH + 4;
+
+                // Creation date
+                int totalDays = this.task.CreatedDay;
+                if (totalDays > 0)
+                {
+                    int year = ((totalDays - 1) / 112) + 1;
+                    int dayInYear = (totalDays - 1) % 112;
+                    int seasonIdx = dayInYear / 28;
+                    int dayOfMonth = (dayInYear % 28) + 1;
+                    string[] seasons = { "Spring", "Summer", "Fall", "Winter" };
+                    string seasonName = seasonIdx < seasons.Length ? seasons[seasonIdx] : "?";
+                    b.DrawString(Game1.smallFont, $"Created: {seasonName} {dayOfMonth}, Year {year}",
+                        new Vector2(ix, iy), infoColor);
+                }
+            }
 
             // Sub-tasks
             Utility.drawTextWithShadow(b, "Sub-tasks:", Game1.smallFont, new Vector2(ix, subLabelY), Game1.textColor, 1f, -1f, -1, -1, 1f, 3);
@@ -412,9 +455,11 @@ namespace StarDo.UI.Pages
 
         private void UpdateContentHeight()
         {
+            int infoLines = this.isNew ? 0 : 3;
             int h = this.lineH + 8 + this.inputH + this.spacing         // Title label + input
                    + this.lineH + 4 + this.inputH + this.spacing         // Notes label + input
-                   + this.btnH + this.spacing                            // Options row
+                   + this.btnH + 8                                       // Options row
+                   + infoLines * (this.lineH + 4) + this.spacing         // Info lines
                    + this.lineH + 8 + this.inputH + this.spacing         // Sub-task label + input
                    + this.task.SubTasks.Count * this.subItemH + 24;      // Sub-task items + bottom pad
             this.scrollableList.SetContentHeight(h);
