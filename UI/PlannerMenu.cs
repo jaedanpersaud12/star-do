@@ -16,7 +16,7 @@ namespace StarDo.UI
     {
         private readonly TaskManager taskManager;
         private readonly ModConfig config;
-        private readonly TabBarComponent tabBar;
+        private TabBarComponent tabBar;
 
         private TaskListPage taskListPage;
         private QuestPage questPage;
@@ -33,17 +33,7 @@ namespace StarDo.UI
         {
             this.taskManager = taskManager;
             this.config = config;
-
-            this.RepositionElements();
-
-            this.tabBar = new TabBarComponent(TabNames,
-                this.xPositionOnScreen + 16,
-                this.yPositionOnScreen - 48,
-                tabWidth: 120, tabHeight: 48);
-
-            this.taskListPage = new TaskListPage(taskManager, this.GetContentArea(), this);
-            this.questPage = new QuestPage(this.GetContentArea());
-            this.templatePage = new TemplatePage(taskManager, this.GetContentArea());
+            this.RebuildLayout();
         }
 
         public void OpenTaskDetail(Models.PlannerTask task, bool isNew)
@@ -63,12 +53,12 @@ namespace StarDo.UI
             this.taskListPage.Refresh();
         }
 
-        private void RepositionElements()
+        private void RebuildLayout()
         {
             int menuWidth = (int)(Game1.uiViewport.Width * 0.8f);
             int menuHeight = (int)(Game1.uiViewport.Height * 0.8f);
-            menuWidth = Math.Min(menuWidth, 1400);
-            menuHeight = Math.Min(menuHeight, 900);
+            menuWidth = Math.Clamp(menuWidth, 800, 1600);
+            menuHeight = Math.Clamp(menuHeight, 600, 1000);
 
             this.width = menuWidth;
             this.height = menuHeight;
@@ -82,6 +72,18 @@ namespace StarDo.UI
                 new Rectangle(337, 494, 12, 12),
                 4f
             );
+
+            int lineH = (int)Game1.smallFont.MeasureString("Tg").Y;
+            int tabBarH = lineH + 24;
+
+            this.tabBar = new TabBarComponent(TabNames,
+                this.xPositionOnScreen + IClickableMenu.borderWidth,
+                this.yPositionOnScreen - tabBarH + 4);
+
+            var content = this.GetContentArea();
+            this.taskListPage = new TaskListPage(this.taskManager, content, this);
+            this.questPage = new QuestPage(content);
+            this.templatePage = new TemplatePage(this.taskManager, content);
         }
 
         private Rectangle GetContentArea()
@@ -89,10 +91,10 @@ namespace StarDo.UI
             int borderW = IClickableMenu.borderWidth;
             int topSpace = IClickableMenu.spaceToClearTopBorder;
             return new Rectangle(
-                this.xPositionOnScreen + borderW,
+                this.xPositionOnScreen + borderW + 8,
                 this.yPositionOnScreen + borderW + topSpace,
-                this.width - borderW * 2,
-                this.height - borderW * 2 - topSpace
+                this.width - borderW * 2 - 16,
+                this.height - borderW * 2 - topSpace - 8
             );
         }
 
@@ -142,12 +144,8 @@ namespace StarDo.UI
             if (this.showingDetail)
                 return;
 
-            switch (this.tabBar.ActiveTab)
-            {
-                case 0:
-                    this.taskListPage.LeftClickHeld(x, y);
-                    break;
-            }
+            if (this.tabBar.ActiveTab == 0)
+                this.taskListPage.LeftClickHeld(x, y);
         }
 
         public override void releaseLeftClick(int x, int y)
@@ -155,12 +153,8 @@ namespace StarDo.UI
             if (this.showingDetail)
                 return;
 
-            switch (this.tabBar.ActiveTab)
-            {
-                case 0:
-                    this.taskListPage.ReleaseLeftClick(x, y);
-                    break;
-            }
+            if (this.tabBar.ActiveTab == 0)
+                this.taskListPage.ReleaseLeftClick(x, y);
         }
 
         public override void receiveScrollWheelAction(int direction)
@@ -173,15 +167,9 @@ namespace StarDo.UI
 
             switch (this.tabBar.ActiveTab)
             {
-                case 0:
-                    this.taskListPage.ReceiveScrollWheel(direction);
-                    break;
-                case 1:
-                    this.questPage.ReceiveScrollWheel(direction);
-                    break;
-                case 2:
-                    this.templatePage.ReceiveScrollWheel(direction);
-                    break;
+                case 0: this.taskListPage.ReceiveScrollWheel(direction); break;
+                case 1: this.questPage.ReceiveScrollWheel(direction); break;
+                case 2: this.templatePage.ReceiveScrollWheel(direction); break;
             }
         }
 
@@ -193,14 +181,12 @@ namespace StarDo.UI
                 return;
             }
 
-            // If text input is active, forward keys there instead of closing
             if (this.tabBar.ActiveTab == 0 && this.taskListPage.IsTextInputActive())
             {
                 this.taskListPage.ReceiveKeyPress(key);
                 return;
             }
 
-            // Close on Escape or hotkey
             SButton sButton = key.ToSButton();
             if ((sButton == SButton.Escape || sButton == this.config.OpenListKey) && this.readyToClose() && this.canClose)
             {
@@ -247,38 +233,25 @@ namespace StarDo.UI
         public override void performHoverAction(int x, int y)
         {
             base.performHoverAction(x, y);
-
-            if (this.showingDetail)
-                return;
-
-            switch (this.tabBar.ActiveTab)
-            {
-                case 0:
-                    this.taskListPage.PerformHoverAction(x, y);
-                    break;
-            }
+            if (!this.showingDetail && this.tabBar.ActiveTab == 0)
+                this.taskListPage.PerformHoverAction(x, y);
         }
 
         public override void gameWindowSizeChanged(Rectangle oldBounds, Rectangle newBounds)
         {
-            this.RepositionElements();
-            var content = this.GetContentArea();
-            this.taskListPage = new TaskListPage(this.taskManager, content, this);
-            this.questPage = new QuestPage(content);
-            this.templatePage = new TemplatePage(this.taskManager, content);
-
             if (this.showingDetail)
                 this.CloseTaskDetail();
+            this.RebuildLayout();
         }
 
         public override void draw(SpriteBatch b)
         {
-            // Dark background overlay
+            // Dim background
             b.Draw(Game1.fadeToBlackRect,
                 new Rectangle(0, 0, Game1.uiViewport.Width, Game1.uiViewport.Height),
                 Color.Black * 0.6f);
 
-            // Menu box
+            // Main dialog box
             Game1.drawDialogueBox(
                 this.xPositionOnScreen, this.yPositionOnScreen,
                 this.width, this.height, false, true);
@@ -286,14 +259,15 @@ namespace StarDo.UI
             b.End();
             b.Begin(SpriteSortMode.Deferred, BlendState.AlphaBlend, SamplerState.PointClamp, null, null);
 
-            // Date display
+            // Date in header
             string dateStr = this.GetDateString();
             if (!string.IsNullOrEmpty(dateStr))
             {
                 var dateSize = Game1.smallFont.MeasureString(dateStr);
-                b.DrawString(Game1.smallFont, dateStr,
-                    new Vector2(this.xPositionOnScreen + this.width - dateSize.X - 80, this.yPositionOnScreen - 40),
-                    Color.Gold);
+                Utility.drawTextWithShadow(b, dateStr, Game1.smallFont,
+                    new Vector2(this.xPositionOnScreen + this.width - dateSize.X - 80,
+                                this.yPositionOnScreen - dateSize.Y - 8),
+                    Color.Gold, 1f, -1f, -1, -1, 1f, 3);
             }
 
             // Tab bar
@@ -302,30 +276,22 @@ namespace StarDo.UI
             // Active page
             switch (this.tabBar.ActiveTab)
             {
-                case 0:
-                    this.taskListPage.Draw(b);
-                    break;
-                case 1:
-                    this.questPage.Draw(b);
-                    break;
-                case 2:
-                    this.templatePage.Draw(b);
-                    break;
+                case 0: this.taskListPage.Draw(b); break;
+                case 1: this.questPage.Draw(b); break;
+                case 2: this.templatePage.Draw(b); break;
             }
 
-            // Task detail overlay
+            // Detail overlay
             if (this.showingDetail && this.taskDetailPage != null)
                 this.taskDetailPage.Draw(b);
 
-            // Close button and cursor
+            // Close button + cursor
             base.draw(b);
             Game1.mouseCursorTransparency = 1f;
             this.drawMouse(b);
         }
 
-        public override void receiveRightClick(int x, int y, bool playSound = true)
-        {
-        }
+        public override void receiveRightClick(int x, int y, bool playSound = true) { }
 
         protected override void cleanupBeforeExit()
         {
@@ -337,13 +303,9 @@ namespace StarDo.UI
         private void OnTabChanged(int newTab)
         {
             this.taskListPage?.Cleanup();
-
-            if (newTab == 0)
-                this.taskListPage.Refresh();
-            if (newTab == 1)
-                this.questPage.Refresh();
-            if (newTab == 2)
-                this.templatePage.Refresh();
+            if (newTab == 0) this.taskListPage.Refresh();
+            if (newTab == 1) this.questPage.Refresh();
+            if (newTab == 2) this.templatePage.Refresh();
         }
     }
 }

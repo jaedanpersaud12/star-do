@@ -21,6 +21,11 @@ namespace StarDo.UI.Components
         public TextInputComponent(int x, int y, int width, int height, string placeholder = "")
         {
             this.placeholder = placeholder;
+
+            int lineH = (int)Game1.smallFont.MeasureString("Tg").Y;
+            if (height < lineH + 16)
+                height = lineH + 16;
+
             this.TextBox = new TextBox(null, null, Game1.smallFont, Game1.textColor)
             {
                 X = x,
@@ -59,6 +64,10 @@ namespace StarDo.UI.Components
 
         public void Reposition(int x, int y, int width, int height)
         {
+            int lineH = (int)Game1.smallFont.MeasureString("Tg").Y;
+            if (height < lineH + 16)
+                height = lineH + 16;
+
             this.TextBox.X = x;
             this.TextBox.Y = y;
             this.TextBox.Width = width;
@@ -68,21 +77,22 @@ namespace StarDo.UI.Components
 
         public void Draw(SpriteBatch b)
         {
-            // Draw background
+            // Background box around the textbox
             IClickableMenu.drawTextureBox(b, Game1.mouseCursors,
                 new Rectangle(403, 383, 6, 6),
-                this.TextBox.X - 8, this.TextBox.Y - 4,
-                this.TextBox.Width + 16, this.TextBox.Height + 8,
-                Color.White, 4f, false);
+                this.TextBox.X - 12, this.TextBox.Y - 8,
+                this.TextBox.Width + 24, this.TextBox.Height + 16,
+                this.IsSelected ? Color.Wheat : Color.White,
+                4f, false);
 
             this.TextBox.Draw(b);
 
-            // Draw placeholder if empty and not selected
+            // Placeholder text
             if (string.IsNullOrEmpty(this.TextBox.Text) && !this.TextBox.Selected && !string.IsNullOrEmpty(this.placeholder))
             {
                 b.DrawString(Game1.smallFont, this.placeholder,
-                    new Vector2(this.TextBox.X + 8, this.TextBox.Y + 4),
-                    Color.Gray * 0.6f);
+                    new Vector2(this.TextBox.X + 12, this.TextBox.Y + 8),
+                    Color.Gray * 0.5f);
             }
         }
     }

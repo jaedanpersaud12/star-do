@@ -8,12 +8,15 @@ namespace StarDo.UI.Components
 {
     public class ScrollableListComponent
     {
-        private readonly Rectangle bounds;
+        private Rectangle bounds;
         private int scrollOffset;
         private int totalContentHeight;
         private bool isDragging;
         private int dragStartY;
         private int dragStartOffset;
+
+        private const int ScrollbarWidth = 24;
+        private const int ScrollbarPad = 8;
 
         public int ScrollOffset => this.scrollOffset;
         public Rectangle Bounds => this.bounds;
@@ -21,6 +24,12 @@ namespace StarDo.UI.Components
         public ScrollableListComponent(Rectangle bounds)
         {
             this.bounds = bounds;
+        }
+
+        public void UpdateBounds(Rectangle newBounds)
+        {
+            this.bounds = newBounds;
+            this.ClampScroll();
         }
 
         public void SetContentHeight(int height)
@@ -50,7 +59,6 @@ namespace StarDo.UI.Components
             if (!this.bounds.Contains(x, y))
                 return false;
 
-            // Check scrollbar track click
             var scrollbarBounds = this.GetScrollbarTrackBounds();
             if (scrollbarBounds.Contains(x, y) && this.NeedsScrolling())
             {
@@ -68,7 +76,7 @@ namespace StarDo.UI.Components
             if (!this.isDragging)
                 return;
 
-            int trackHeight = this.bounds.Height - 64;
+            int trackHeight = this.GetScrollbarTrackBounds().Height;
             int maxScroll = this.MaxScroll();
             if (trackHeight <= 0 || maxScroll <= 0)
                 return;
@@ -91,16 +99,9 @@ namespace StarDo.UI.Components
         public void BeginScissorRect(SpriteBatch b)
         {
             b.End();
-            var scissor = new Rectangle(
-                this.bounds.X,
-                this.bounds.Y,
-                this.bounds.Width,
-                this.bounds.Height
-            );
-
             b.Begin(SpriteSortMode.Deferred, BlendState.AlphaBlend, SamplerState.PointClamp,
                 null, new RasterizerState { ScissorTestEnable = true });
-            b.GraphicsDevice.ScissorRectangle = scissor;
+            b.GraphicsDevice.ScissorRectangle = this.bounds;
         }
 
         public void EndScissorRect(SpriteBatch b)
@@ -115,22 +116,19 @@ namespace StarDo.UI.Components
                 return;
 
             var track = this.GetScrollbarTrackBounds();
-            int thumbHeight = Math.Max(32, (int)((float)this.bounds.Height / this.totalContentHeight * track.Height));
+            int thumbHeight = Math.Max(40, (int)((float)this.bounds.Height / this.totalContentHeight * track.Height));
             int maxScroll = this.MaxScroll();
             float scrollFraction = maxScroll > 0 ? (float)this.scrollOffset / maxScroll : 0;
             int thumbY = track.Y + (int)(scrollFraction * (track.Height - thumbHeight));
 
-            // Draw track
-            IClickableMenu.drawTextureBox(b, Game1.mouseCursors,
-                new Rectangle(403, 383, 6, 6),
-                track.X, track.Y, track.Width, track.Height,
-                Color.DarkGray * 0.5f, 4f, false);
+            // Track
+            b.Draw(Game1.staminaRect, track, Color.Black * 0.2f);
 
-            // Draw thumb
+            // Thumb
             IClickableMenu.drawTextureBox(b, Game1.mouseCursors,
                 new Rectangle(403, 383, 6, 6),
                 track.X, thumbY, track.Width, thumbHeight,
-                Color.Gray, 4f, false);
+                this.isDragging ? Color.White : Color.LightGray, 4f, false);
         }
 
         public void Reset()
@@ -141,10 +139,10 @@ namespace StarDo.UI.Components
         private Rectangle GetScrollbarTrackBounds()
         {
             return new Rectangle(
-                this.bounds.Right - 24,
-                this.bounds.Y + 8,
-                20,
-                this.bounds.Height - 16
+                this.bounds.Right - ScrollbarWidth - ScrollbarPad,
+                this.bounds.Y + ScrollbarPad,
+                ScrollbarWidth,
+                this.bounds.Height - ScrollbarPad * 2
             );
         }
 

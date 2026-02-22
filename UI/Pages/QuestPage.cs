@@ -17,11 +17,21 @@ namespace StarDo.UI.Pages
         private List<QuestDisplayInfo> quests = new();
         private List<SpecialOrderDisplayInfo> specialOrders = new();
 
+        private readonly int lineH;
+        private readonly int headerH;
+        private readonly int questCardH;
+        private readonly int objLineH;
+
         public QuestPage(Rectangle contentArea)
         {
             this.contentArea = contentArea;
+            this.lineH = (int)Game1.smallFont.MeasureString("Tg").Y;
+            this.headerH = (int)Game1.dialogueFont.MeasureString("Tg").Y + 12;
+            this.questCardH = this.lineH * 3 + 24;
+            this.objLineH = this.lineH + 8;
+
             this.scrollableList = new ScrollableListComponent(
-                new Rectangle(contentArea.X, contentArea.Y + 8, contentArea.Width, contentArea.Height - 16)
+                new Rectangle(contentArea.X, contentArea.Y, contentArea.Width, contentArea.Height)
             );
             this.Refresh();
         }
@@ -34,12 +44,10 @@ namespace StarDo.UI.Pages
             if (!Context.IsWorldReady)
                 return;
 
-            // Read active quests
             foreach (var quest in Game1.player.questLog)
             {
                 if (quest == null || quest.completed.Value)
                     continue;
-
                 this.quests.Add(new QuestDisplayInfo
                 {
                     Title = quest.questTitle ?? "Unknown Quest",
@@ -48,24 +56,18 @@ namespace StarDo.UI.Pages
                 });
             }
 
-            // Read special orders
             foreach (var order in Game1.player.team.specialOrders)
             {
-                if (order == null)
-                    continue;
-
+                if (order == null) continue;
                 var info = new SpecialOrderDisplayInfo
                 {
                     Title = order.GetName(),
                     Requester = order.requester.Value ?? "",
                     DaysLeft = order.GetDaysLeft()
                 };
-
                 foreach (var obj in order.objectives)
                 {
-                    if (obj == null)
-                        continue;
-
+                    if (obj == null) continue;
                     info.Objectives.Add(new ObjectiveInfo
                     {
                         Description = obj.GetDescription(),
@@ -74,29 +76,21 @@ namespace StarDo.UI.Pages
                         IsComplete = obj.IsComplete()
                     });
                 }
-
                 this.specialOrders.Add(info);
             }
 
-            // Calculate content height
-            int height = 0;
-            height += 40; // "Active Quests" header
-            height += Math.Max(this.quests.Count, 1) * 80;
-            height += 48; // spacing + "Special Orders" header
-            height += Math.Max(this.specialOrders.Count, 1) * 120;
-
-            this.scrollableList.SetContentHeight(height);
+            int h = this.headerH;
+            h += Math.Max(this.quests.Count, 1) * (this.questCardH + 8);
+            h += 16 + this.headerH;
+            foreach (var so in this.specialOrders)
+                h += this.lineH * 2 + 24 + so.Objectives.Count * this.objLineH + 16;
+            if (this.specialOrders.Count == 0)
+                h += this.questCardH;
+            this.scrollableList.SetContentHeight(h);
         }
 
-        public void ReceiveLeftClick(int x, int y)
-        {
-            this.scrollableList.HandleLeftClick(x, y);
-        }
-
-        public void ReceiveScrollWheel(int direction)
-        {
-            this.scrollableList.HandleScrollWheel(direction);
-        }
+        public void ReceiveLeftClick(int x, int y) => this.scrollableList.HandleLeftClick(x, y);
+        public void ReceiveScrollWheel(int direction) => this.scrollableList.HandleScrollWheel(direction);
 
         public void Draw(SpriteBatch b)
         {
@@ -104,35 +98,39 @@ namespace StarDo.UI.Pages
 
             var bounds = this.scrollableList.Bounds;
             int y = bounds.Y - this.scrollableList.ScrollOffset;
-            int contentWidth = bounds.Width - 32;
+            int cw = bounds.Width - 40;
 
-            // Active Quests Section
-            b.DrawString(Game1.dialogueFont, "Active Quests", new Vector2(bounds.X + 8, y), Color.Gold);
-            y += 44;
+            // Active Quests header
+            Utility.drawTextWithShadow(b, "Active Quests", Game1.dialogueFont,
+                new Vector2(bounds.X + 8, y), Color.Gold, 1f, -1f, -1, -1, 1f, 3);
+            y += this.headerH;
 
             if (this.quests.Count == 0)
             {
-                b.DrawString(Game1.smallFont, "No active quests.", new Vector2(bounds.X + 16, y + 8), Color.Gray);
-                y += 80;
+                b.DrawString(Game1.smallFont, "No active quests.", new Vector2(bounds.X + 20, y + 8), Color.Gray);
+                y += this.questCardH + 8;
             }
             else
             {
                 foreach (var quest in this.quests)
                 {
-                    if (y + 80 > bounds.Y && y < bounds.Bottom)
+                    if (y + this.questCardH > bounds.Y && y < bounds.Bottom)
                     {
                         IClickableMenu.drawTextureBox(b, Game1.mouseCursors,
                             new Rectangle(384, 396, 15, 15),
-                            bounds.X + 4, y, contentWidth, 72,
+                            bounds.X + 4, y, cw, this.questCardH,
                             Color.White, 4f, false);
 
                         Utility.drawTextWithShadow(b, quest.Title, Game1.smallFont,
-                            new Vector2(bounds.X + 16, y + 8), Game1.textColor, 1f, -1f, -1, -1, 1f, 3);
+                            new Vector2(bounds.X + 24, y + 20), Game1.textColor, 1f, -1f, -1, -1, 1f, 3);
 
                         if (!string.IsNullOrEmpty(quest.Description))
                         {
-                            string desc = quest.Description.Length > 80 ? quest.Description[..77] + "..." : quest.Description;
-                            b.DrawString(Game1.smallFont, desc, new Vector2(bounds.X + 16, y + 32), Color.Gray);
+                            int maxChars = Math.Max(10, (cw - 48) / 8);
+                            string desc = quest.Description.Length > maxChars
+                                ? quest.Description[..(maxChars - 3)] + "..."
+                                : quest.Description;
+                            b.DrawString(Game1.smallFont, desc, new Vector2(bounds.X + 24, y + 20 + this.lineH + 4), Color.Gray);
                         }
 
                         if (quest.DaysLeft > 0)
@@ -141,81 +139,71 @@ namespace StarDo.UI.Pages
                             var daysSize = Game1.smallFont.MeasureString(daysText);
                             Color daysColor = quest.DaysLeft <= 3 ? Color.Red : Color.DarkGoldenrod;
                             b.DrawString(Game1.smallFont, daysText,
-                                new Vector2(bounds.X + contentWidth - daysSize.X - 12, y + 8), daysColor);
+                                new Vector2(bounds.X + cw - daysSize.X - 20, y + 20), daysColor);
                         }
                     }
-                    y += 80;
+                    y += this.questCardH + 8;
                 }
             }
 
-            // Special Orders Section
+            // Special Orders header
             y += 8;
-            b.DrawString(Game1.dialogueFont, "Special Orders", new Vector2(bounds.X + 8, y), Color.Gold);
-            y += 44;
+            Utility.drawTextWithShadow(b, "Special Orders", Game1.dialogueFont,
+                new Vector2(bounds.X + 8, y), Color.Gold, 1f, -1f, -1, -1, 1f, 3);
+            y += this.headerH;
 
             if (this.specialOrders.Count == 0)
             {
-                b.DrawString(Game1.smallFont, "No active special orders.", new Vector2(bounds.X + 16, y + 8), Color.Gray);
-                y += 80;
+                b.DrawString(Game1.smallFont, "No active special orders.", new Vector2(bounds.X + 20, y + 8), Color.Gray);
             }
             else
             {
                 foreach (var order in this.specialOrders)
                 {
-                    int orderHeight = 56 + order.Objectives.Count * 28;
-                    if (y + orderHeight > bounds.Y && y < bounds.Bottom)
+                    int orderH = this.lineH * 2 + 24 + order.Objectives.Count * this.objLineH;
+                    if (y + orderH > bounds.Y && y < bounds.Bottom)
                     {
                         IClickableMenu.drawTextureBox(b, Game1.mouseCursors,
                             new Rectangle(384, 396, 15, 15),
-                            bounds.X + 4, y, contentWidth, orderHeight,
+                            bounds.X + 4, y, cw, orderH,
                             Color.White, 4f, false);
 
                         Utility.drawTextWithShadow(b, order.Title, Game1.smallFont,
-                            new Vector2(bounds.X + 16, y + 8), Game1.textColor, 1f, -1f, -1, -1, 1f, 3);
+                            new Vector2(bounds.X + 24, y + 20), Game1.textColor, 1f, -1f, -1, -1, 1f, 3);
 
                         if (!string.IsNullOrEmpty(order.Requester))
-                        {
                             b.DrawString(Game1.smallFont, $"From: {order.Requester}",
-                                new Vector2(bounds.X + 16, y + 30), Color.Gray);
-                        }
+                                new Vector2(bounds.X + 24, y + 20 + this.lineH + 4), Color.Gray);
 
                         if (order.DaysLeft > 0)
                         {
-                            string daysText = $"{order.DaysLeft}d left";
-                            var daysSize = Game1.smallFont.MeasureString(daysText);
-                            Color daysColor = order.DaysLeft <= 3 ? Color.Red : Color.DarkGoldenrod;
-                            b.DrawString(Game1.smallFont, daysText,
-                                new Vector2(bounds.X + contentWidth - daysSize.X - 12, y + 8), daysColor);
+                            string dt = $"{order.DaysLeft}d left";
+                            var ds = Game1.smallFont.MeasureString(dt);
+                            Color dc = order.DaysLeft <= 3 ? Color.Red : Color.DarkGoldenrod;
+                            b.DrawString(Game1.smallFont, dt, new Vector2(bounds.X + cw - ds.X - 20, y + 20), dc);
                         }
 
-                        // Objectives with progress bars
-                        int objY = y + 52;
+                        int objY = y + this.lineH * 2 + 20;
                         foreach (var obj in order.Objectives)
                         {
-                            // Progress bar background
-                            int barWidth = 200;
-                            int barHeight = 16;
-                            int barX = bounds.X + 24;
+                            int barW = Math.Min(200, cw / 3);
+                            int barH = this.lineH - 4;
+                            int barX = bounds.X + 28;
 
-                            b.Draw(Game1.staminaRect, new Rectangle(barX, objY + 4, barWidth, barHeight), Color.DarkGray * 0.4f);
+                            b.Draw(Game1.staminaRect, new Rectangle(barX, objY + 2, barW, barH), Color.Black * 0.2f);
+                            float progress = obj.MaxCount > 0 ? Math.Clamp((float)obj.CurrentCount / obj.MaxCount, 0, 1) : (obj.IsComplete ? 1 : 0);
+                            Color barC = obj.IsComplete ? Color.Green : Color.Gold;
+                            b.Draw(Game1.staminaRect, new Rectangle(barX, objY + 2, (int)(barW * progress), barH), barC * 0.7f);
 
-                            // Progress bar fill
-                            float progress = obj.MaxCount > 0 ? (float)obj.CurrentCount / obj.MaxCount : (obj.IsComplete ? 1f : 0f);
-                            progress = Math.Clamp(progress, 0f, 1f);
-                            Color barColor = obj.IsComplete ? Color.Green : Color.Gold;
-                            b.Draw(Game1.staminaRect, new Rectangle(barX, objY + 4, (int)(barWidth * progress), barHeight), barColor * 0.7f);
-
-                            // Objective text
                             string objText = obj.Description;
-                            if (obj.MaxCount > 0)
-                                objText += $" ({obj.CurrentCount}/{obj.MaxCount})";
+                            if (obj.MaxCount > 0) objText += $" ({obj.CurrentCount}/{obj.MaxCount})";
                             b.DrawString(Game1.smallFont, objText,
-                                new Vector2(barX + barWidth + 12, objY), obj.IsComplete ? Color.Green : Game1.textColor);
+                                new Vector2(barX + barW + 12, objY), obj.IsComplete ? Color.Green : Game1.textColor);
 
-                            objY += 28;
+                            objY += this.objLineH;
                         }
                     }
-                    y += orderHeight + 8;
+                    y += orderH + 8;
                 }
             }
 
@@ -223,27 +211,8 @@ namespace StarDo.UI.Pages
             this.scrollableList.DrawScrollbar(b);
         }
 
-        private class QuestDisplayInfo
-        {
-            public string Title;
-            public string Description;
-            public int DaysLeft;
-        }
-
-        private class SpecialOrderDisplayInfo
-        {
-            public string Title;
-            public string Requester;
-            public int DaysLeft;
-            public List<ObjectiveInfo> Objectives = new();
-        }
-
-        private class ObjectiveInfo
-        {
-            public string Description;
-            public int CurrentCount;
-            public int MaxCount;
-            public bool IsComplete;
-        }
+        private class QuestDisplayInfo { public string Title; public string Description; public int DaysLeft; }
+        private class SpecialOrderDisplayInfo { public string Title; public string Requester; public int DaysLeft; public List<ObjectiveInfo> Objectives = new(); }
+        private class ObjectiveInfo { public string Description; public int CurrentCount; public int MaxCount; public bool IsComplete; }
     }
 }

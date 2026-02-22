@@ -15,7 +15,7 @@ namespace StarDo.UI.Pages
     {
         private readonly TaskManager taskManager;
         private readonly PlannerMenu parentMenu;
-        private Rectangle contentArea;
+        private readonly Rectangle contentArea;
         private ScrollableListComponent scrollableList;
         private TextInputComponent quickAddInput;
         private ClickableComponent addButton;
@@ -29,9 +29,11 @@ namespace StarDo.UI.Pages
         private string hoveredTaskId;
         private string hoverTooltip;
 
-        private const int FilterBarHeight = 44;
-        private const int QuickAddHeight = 52;
-        private const int SectionHeaderHeight = 36;
+        // Computed layout values
+        private readonly int lineH;
+        private readonly int filterBarHeight;
+        private readonly int quickAddHeight;
+        private readonly int sectionHeaderHeight;
 
         public TaskListPage(TaskManager taskManager, Rectangle contentArea, PlannerMenu parentMenu)
         {
@@ -39,43 +41,45 @@ namespace StarDo.UI.Pages
             this.parentMenu = parentMenu;
             this.contentArea = contentArea;
 
-            int listTop = contentArea.Y + FilterBarHeight + QuickAddHeight + 8;
-            int listHeight = contentArea.Height - FilterBarHeight - QuickAddHeight - 16;
-            this.scrollableList = new ScrollableListComponent(
-                new Rectangle(contentArea.X, listTop, contentArea.Width, listHeight)
-            );
+            this.lineH = (int)Game1.smallFont.MeasureString("Tg").Y;
+            this.filterBarHeight = this.lineH + 24;
+            this.quickAddHeight = this.lineH + 28;
+            this.sectionHeaderHeight = this.lineH + 12;
 
-            // Quick add input
-            int inputY = contentArea.Y + FilterBarHeight + 4;
-            int inputWidth = contentArea.Width - 120;
-            this.quickAddInput = new TextInputComponent(
-                contentArea.X + 8, inputY, inputWidth, 40, "Quick add task..."
-            );
-
-            // Add button
-            this.addButton = new ClickableComponent(
-                new Rectangle(contentArea.X + inputWidth + 20, inputY, 88, 40),
-                "addBtn"
-            )
-            {
-                myID = 8000,
-                leftNeighborID = -7777
-            };
-
-            // Filter buttons
-            int filterX = contentArea.X + 4;
+            // Filter buttons - auto-sized to text
+            int filterX = contentArea.X;
+            int filterBtnH = this.lineH + 16;
             for (int i = 0; i < filterLabels.Length; i++)
             {
-                int btnWidth = (int)Game1.smallFont.MeasureString(filterLabels[i]).X + 24;
+                int textW = (int)Game1.smallFont.MeasureString(filterLabels[i]).X;
+                int btnWidth = textW + 40;
                 filterButtons[i] = new ClickableComponent(
-                    new Rectangle(filterX, contentArea.Y + 4, btnWidth, 32),
+                    new Rectangle(filterX, contentArea.Y + 4, btnWidth, filterBtnH),
                     i.ToString()
-                )
-                {
-                    myID = 7000 + i
-                };
-                filterX += btnWidth + 4;
+                ) { myID = 7000 + i };
+                filterX += btnWidth + 6;
             }
+
+            // Quick add input
+            int inputY = contentArea.Y + this.filterBarHeight;
+            int addBtnTextW = (int)Game1.smallFont.MeasureString("+ Add").X;
+            int addBtnW = addBtnTextW + 40;
+            int inputWidth = contentArea.Width - addBtnW - 20;
+            this.quickAddInput = new TextInputComponent(
+                contentArea.X, inputY, inputWidth, this.lineH + 8, "Quick add task..."
+            );
+
+            this.addButton = new ClickableComponent(
+                new Rectangle(contentArea.X + inputWidth + 12, inputY - 4, addBtnW, this.lineH + 24),
+                "addBtn"
+            ) { myID = 8000 };
+
+            // Scrollable list area
+            int listTop = contentArea.Y + this.filterBarHeight + this.quickAddHeight + 8;
+            int listHeight = contentArea.Height - this.filterBarHeight - this.quickAddHeight - 16;
+            this.scrollableList = new ScrollableListComponent(
+                new Rectangle(contentArea.X, listTop, contentArea.Width, Math.Max(listHeight, 100))
+            );
 
             this.Refresh();
         }
@@ -87,7 +91,7 @@ namespace StarDo.UI.Pages
 
             int totalHeight = this.activeTasks.Count * TaskRowComponent.RowHeight;
             if (this.doneTodayTasks.Count > 0)
-                totalHeight += SectionHeaderHeight + this.doneTodayTasks.Count * TaskRowComponent.RowHeight;
+                totalHeight += this.sectionHeaderHeight + this.doneTodayTasks.Count * TaskRowComponent.RowHeight;
 
             this.scrollableList.SetContentHeight(totalHeight);
         }
@@ -107,7 +111,7 @@ namespace StarDo.UI.Pages
                 }
             }
 
-            // Quick add input click
+            // Quick add input
             if (this.quickAddInput.ContainsPoint(x, y))
             {
                 this.quickAddInput.Select();
@@ -121,7 +125,6 @@ namespace StarDo.UI.Pages
                 return;
             }
 
-            // Deselect input if clicking elsewhere
             if (this.quickAddInput.IsSelected)
                 this.quickAddInput.Deselect();
 
@@ -135,13 +138,13 @@ namespace StarDo.UI.Pages
                 return;
 
             int rowY = listBounds.Y - this.scrollableList.ScrollOffset;
+            int rowWidth = listBounds.Width - 40;
 
-            // Active tasks
             foreach (var task in this.activeTasks)
             {
                 if (rowY + TaskRowComponent.RowHeight > listBounds.Y && rowY < listBounds.Bottom)
                 {
-                    var rowBounds = TaskRowComponent.GetRowBounds(listBounds.X, rowY, listBounds.Width - 32);
+                    var rowBounds = TaskRowComponent.GetRowBounds(listBounds.X, rowY, rowWidth);
                     if (rowBounds.Contains(x, y))
                     {
                         var cbBounds = TaskRowComponent.GetCheckboxBounds(listBounds.X, rowY);
@@ -161,15 +164,15 @@ namespace StarDo.UI.Pages
                 rowY += TaskRowComponent.RowHeight;
             }
 
-            // Done today section
+            // Done today
             if (this.doneTodayTasks.Count > 0)
             {
-                rowY += SectionHeaderHeight;
+                rowY += this.sectionHeaderHeight;
                 foreach (var task in this.doneTodayTasks)
                 {
                     if (rowY + TaskRowComponent.RowHeight > listBounds.Y && rowY < listBounds.Bottom)
                     {
-                        var rowBounds = TaskRowComponent.GetRowBounds(listBounds.X, rowY, listBounds.Width - 32);
+                        var rowBounds = TaskRowComponent.GetRowBounds(listBounds.X, rowY, rowWidth);
                         if (rowBounds.Contains(x, y))
                         {
                             var cbBounds = TaskRowComponent.GetCheckboxBounds(listBounds.X, rowY);
@@ -191,29 +194,16 @@ namespace StarDo.UI.Pages
             }
         }
 
-        public void LeftClickHeld(int x, int y)
-        {
-            this.scrollableList.HandleLeftClickHeld(x, y);
-        }
-
-        public void ReleaseLeftClick(int x, int y)
-        {
-            this.scrollableList.HandleLeftClickReleased();
-        }
-
-        public void ReceiveScrollWheel(int direction)
-        {
-            this.scrollableList.HandleScrollWheel(direction);
-        }
+        public void LeftClickHeld(int x, int y) => this.scrollableList.HandleLeftClickHeld(x, y);
+        public void ReleaseLeftClick(int x, int y) => this.scrollableList.HandleLeftClickReleased();
+        public void ReceiveScrollWheel(int direction) => this.scrollableList.HandleScrollWheel(direction);
 
         public void ReceiveKeyPress(Keys key)
         {
             if (this.quickAddInput.IsSelected)
             {
-                if (key == Keys.Enter)
-                    this.DoQuickAdd();
-                else if (key == Keys.Escape)
-                    this.quickAddInput.Deselect();
+                if (key == Keys.Enter) this.DoQuickAdd();
+                else if (key == Keys.Escape) this.quickAddInput.Deselect();
                 return;
             }
         }
@@ -228,13 +218,13 @@ namespace StarDo.UI.Pages
                 return;
 
             int rowY = listBounds.Y - this.scrollableList.ScrollOffset;
+            int rowWidth = listBounds.Width - 40;
 
             foreach (var task in this.activeTasks)
             {
                 if (rowY + TaskRowComponent.RowHeight > listBounds.Y && rowY < listBounds.Bottom)
                 {
-                    var rowBounds = TaskRowComponent.GetRowBounds(listBounds.X, rowY, listBounds.Width - 32);
-                    if (rowBounds.Contains(x, y))
+                    if (TaskRowComponent.GetRowBounds(listBounds.X, rowY, rowWidth).Contains(x, y))
                     {
                         this.hoveredTaskId = task.Id;
                         if (!string.IsNullOrEmpty(task.Notes))
@@ -254,51 +244,45 @@ namespace StarDo.UI.Pages
                 bool isActive = (i == 0 && !this.activeFilter.HasValue) ||
                                 (i > 0 && this.activeFilter.HasValue && (int)this.activeFilter.Value == i - 1);
 
+                var fb = this.filterButtons[i].bounds;
                 IClickableMenu.drawTextureBox(b, Game1.mouseCursors,
                     new Rectangle(384, 396, 15, 15),
-                    this.filterButtons[i].bounds.X, this.filterButtons[i].bounds.Y,
-                    this.filterButtons[i].bounds.Width, this.filterButtons[i].bounds.Height,
+                    fb.X, fb.Y, fb.Width, fb.Height,
                     isActive ? Color.Gold : Color.White, 4f, false);
 
-                var textSize = Game1.smallFont.MeasureString(this.filterLabels[i]);
-                b.DrawString(Game1.smallFont, this.filterLabels[i],
-                    new Vector2(
-                        this.filterButtons[i].bounds.X + (this.filterButtons[i].bounds.Width - textSize.X) / 2,
-                        this.filterButtons[i].bounds.Y + (this.filterButtons[i].bounds.Height - textSize.Y) / 2
-                    ),
-                    isActive ? Color.DarkGoldenrod : Game1.textColor);
+                var ts = Game1.smallFont.MeasureString(this.filterLabels[i]);
+                Utility.drawTextWithShadow(b, this.filterLabels[i], Game1.smallFont,
+                    new Vector2(fb.X + (fb.Width - ts.X) / 2, fb.Y + (fb.Height - ts.Y) / 2),
+                    isActive ? Color.DarkGoldenrod : Game1.textColor, 1f, -1f, -1, -1, 1f, 3);
             }
 
-            // Quick add bar
+            // Quick add
             this.quickAddInput.Draw(b);
 
             // Add button
+            var ab = this.addButton.bounds;
             IClickableMenu.drawTextureBox(b, Game1.mouseCursors,
                 new Rectangle(384, 396, 15, 15),
-                this.addButton.bounds.X, this.addButton.bounds.Y,
-                this.addButton.bounds.Width, this.addButton.bounds.Height,
+                ab.X, ab.Y, ab.Width, ab.Height,
                 Color.LightGreen, 4f, false);
-            var addTextSize = Game1.smallFont.MeasureString("+ Add");
-            b.DrawString(Game1.smallFont, "+ Add",
-                new Vector2(
-                    this.addButton.bounds.X + (this.addButton.bounds.Width - addTextSize.X) / 2,
-                    this.addButton.bounds.Y + (this.addButton.bounds.Height - addTextSize.Y) / 2
-                ),
-                Game1.textColor);
+            var addTs = Game1.smallFont.MeasureString("+ Add");
+            Utility.drawTextWithShadow(b, "+ Add", Game1.smallFont,
+                new Vector2(ab.X + (ab.Width - addTs.X) / 2, ab.Y + (ab.Height - addTs.Y) / 2),
+                Game1.textColor, 1f, -1f, -1, -1, 1f, 3);
 
-            // Scrollable task list
+            // Scrollable list
             this.scrollableList.BeginScissorRect(b);
 
             var listBounds = this.scrollableList.Bounds;
             int rowY = listBounds.Y - this.scrollableList.ScrollOffset;
+            int rowWidth = listBounds.Width - 40;
 
-            // Active tasks
             if (this.activeTasks.Count == 0 && this.doneTodayTasks.Count == 0)
             {
-                string emptyMsg = "No tasks yet! Add one above or press + Add.";
-                var emptySize = Game1.smallFont.MeasureString(emptyMsg);
-                b.DrawString(Game1.smallFont, emptyMsg,
-                    new Vector2(listBounds.X + (listBounds.Width - emptySize.X) / 2, listBounds.Y + 40),
+                string msg = "No tasks yet! Add one above.";
+                var msgSize = Game1.smallFont.MeasureString(msg);
+                b.DrawString(Game1.smallFont, msg,
+                    new Vector2(listBounds.X + (listBounds.Width - msgSize.X) / 2, listBounds.Y + 40),
                     Color.Gray);
             }
             else
@@ -306,30 +290,23 @@ namespace StarDo.UI.Pages
                 foreach (var task in this.activeTasks)
                 {
                     if (rowY + TaskRowComponent.RowHeight > listBounds.Y && rowY < listBounds.Bottom)
-                    {
-                        bool isHovered = this.hoveredTaskId == task.Id;
-                        TaskRowComponent.Draw(b, task, listBounds.X, rowY, listBounds.Width - 32, isHovered);
-                    }
+                        TaskRowComponent.Draw(b, task, listBounds.X, rowY, rowWidth, this.hoveredTaskId == task.Id);
                     rowY += TaskRowComponent.RowHeight;
                 }
 
-                // Done Today section
                 if (this.doneTodayTasks.Count > 0)
                 {
-                    if (rowY + SectionHeaderHeight > listBounds.Y && rowY < listBounds.Bottom)
+                    if (rowY + this.sectionHeaderHeight > listBounds.Y && rowY < listBounds.Bottom)
                     {
-                        b.DrawString(Game1.smallFont, $"-- Done Today ({this.doneTodayTasks.Count}) --",
-                            new Vector2(listBounds.X + 8, rowY + 8), Color.Gray);
+                        string hdr = $"-- Done Today ({this.doneTodayTasks.Count}) --";
+                        b.DrawString(Game1.smallFont, hdr, new Vector2(listBounds.X + 8, rowY + 4), Color.Gray);
                     }
-                    rowY += SectionHeaderHeight;
+                    rowY += this.sectionHeaderHeight;
 
                     foreach (var task in this.doneTodayTasks)
                     {
                         if (rowY + TaskRowComponent.RowHeight > listBounds.Y && rowY < listBounds.Bottom)
-                        {
-                            bool isHovered = this.hoveredTaskId == task.Id;
-                            TaskRowComponent.Draw(b, task, listBounds.X, rowY, listBounds.Width - 32, isHovered, dimmed: true);
-                        }
+                            TaskRowComponent.Draw(b, task, listBounds.X, rowY, rowWidth, this.hoveredTaskId == task.Id, dimmed: true);
                         rowY += TaskRowComponent.RowHeight;
                     }
                 }
@@ -338,22 +315,13 @@ namespace StarDo.UI.Pages
             this.scrollableList.EndScissorRect(b);
             this.scrollableList.DrawScrollbar(b);
 
-            // Tooltip
             if (!string.IsNullOrEmpty(this.hoverTooltip))
-            {
                 IClickableMenu.drawHoverText(b, this.hoverTooltip, Game1.smallFont);
-            }
         }
 
-        public bool IsTextInputActive()
-        {
-            return this.quickAddInput?.IsSelected ?? false;
-        }
+        public bool IsTextInputActive() => this.quickAddInput?.IsSelected ?? false;
 
-        public void Cleanup()
-        {
-            this.quickAddInput?.Deselect();
-        }
+        public void Cleanup() => this.quickAddInput?.Deselect();
 
         private void DoQuickAdd()
         {

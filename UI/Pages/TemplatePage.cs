@@ -13,25 +13,41 @@ namespace StarDo.UI.Pages
     public class TemplatePage
     {
         private readonly TaskManager taskManager;
-        private Rectangle contentArea;
+        private readonly Rectangle contentArea;
         private ScrollableListComponent scrollableList;
 
-        private const int TemplateRowHeight = 120;
+        private readonly int lineH;
+        private readonly int headerH;
+        private readonly int btnH;
 
         public TemplatePage(TaskManager taskManager, Rectangle contentArea)
         {
             this.taskManager = taskManager;
             this.contentArea = contentArea;
+
+            this.lineH = (int)Game1.smallFont.MeasureString("Tg").Y;
+            this.headerH = (int)Game1.dialogueFont.MeasureString("Tg").Y + 12;
+            this.btnH = this.lineH + 24;
+
             this.scrollableList = new ScrollableListComponent(
-                new Rectangle(contentArea.X, contentArea.Y + 8, contentArea.Width, contentArea.Height - 16)
+                new Rectangle(contentArea.X, contentArea.Y, contentArea.Width, contentArea.Height)
             );
             this.Refresh();
         }
 
+        private int GetTemplateRowHeight(TemplateDefinition template)
+        {
+            int previewLines = Math.Min(template.SubTasks.Count, 3);
+            if (template.SubTasks.Count > 3) previewLines++;
+            return this.lineH * 2 + 28 + previewLines * (this.lineH + 2) + 16;
+        }
+
         public void Refresh()
         {
-            int totalHeight = 44 + TemplateProvider.Templates.Count * (TemplateRowHeight + 8);
-            this.scrollableList.SetContentHeight(totalHeight);
+            int totalH = this.headerH + 8;
+            foreach (var t in TemplateProvider.Templates)
+                totalH += this.GetTemplateRowHeight(t) + 8;
+            this.scrollableList.SetContentHeight(totalH);
         }
 
         public void ReceiveLeftClick(int x, int y)
@@ -43,31 +59,30 @@ namespace StarDo.UI.Pages
             if (!bounds.Contains(x, y))
                 return;
 
-            int rowY = bounds.Y - this.scrollableList.ScrollOffset + 44;
+            int rowY = bounds.Y - this.scrollableList.ScrollOffset + this.headerH + 8;
 
             foreach (var template in TemplateProvider.Templates)
             {
-                if (rowY + TemplateRowHeight > bounds.Y && rowY < bounds.Bottom)
+                int rowH = this.GetTemplateRowHeight(template);
+                if (rowY + rowH > bounds.Y && rowY < bounds.Bottom)
                 {
-                    // Toggle button area (right side of the row)
-                    int toggleX = bounds.X + bounds.Width - 120;
-                    int toggleY = rowY + 8;
-                    var toggleBounds = new Rectangle(toggleX, toggleY, 100, 36);
+                    // Toggle button
+                    string btnText = this.taskManager.HasTasksForTemplate(template.Id) ? "Disable" : "Enable";
+                    int btnW = (int)Game1.smallFont.MeasureString(btnText).X + 40;
+                    int toggleX = bounds.X + bounds.Width - btnW - 52;
+                    int toggleY = rowY + 20;
 
-                    if (toggleBounds.Contains(x, y))
+                    if (new Rectangle(toggleX, toggleY, btnW, this.btnH).Contains(x, y))
                     {
                         this.ToggleTemplate(template);
                         return;
                     }
                 }
-                rowY += TemplateRowHeight + 8;
+                rowY += rowH + 8;
             }
         }
 
-        public void ReceiveScrollWheel(int direction)
-        {
-            this.scrollableList.HandleScrollWheel(direction);
-        }
+        public void ReceiveScrollWheel(int direction) => this.scrollableList.HandleScrollWheel(direction);
 
         public void Draw(SpriteBatch b)
         {
@@ -75,62 +90,66 @@ namespace StarDo.UI.Pages
 
             var bounds = this.scrollableList.Bounds;
             int y = bounds.Y - this.scrollableList.ScrollOffset;
-            int contentWidth = bounds.Width - 32;
+            int cw = bounds.Width - 40;
 
-            b.DrawString(Game1.dialogueFont, "Task Templates", new Vector2(bounds.X + 8, y), Color.Gold);
-            y += 44;
+            Utility.drawTextWithShadow(b, "Task Templates", Game1.dialogueFont,
+                new Vector2(bounds.X + 8, y), Color.Gold, 1f, -1f, -1, -1, 1f, 3);
+            y += this.headerH + 8;
 
             foreach (var template in TemplateProvider.Templates)
             {
-                if (y + TemplateRowHeight > bounds.Y && y < bounds.Bottom)
+                int rowH = this.GetTemplateRowHeight(template);
+                if (y + rowH > bounds.Y && y < bounds.Bottom)
                 {
                     bool isEnabled = this.taskManager.HasTasksForTemplate(template.Id);
 
                     IClickableMenu.drawTextureBox(b, Game1.mouseCursors,
                         new Rectangle(384, 396, 15, 15),
-                        bounds.X + 4, y, contentWidth, TemplateRowHeight,
-                        isEnabled ? new Color(200, 255, 200) : Color.White,
+                        bounds.X + 4, y, cw, rowH,
+                        isEnabled ? new Color(210, 255, 210) : Color.White,
                         4f, false);
 
-                    // Template name
+                    // Name
                     Utility.drawTextWithShadow(b, template.Name, Game1.smallFont,
-                        new Vector2(bounds.X + 16, y + 8), Game1.textColor, 1f, -1f, -1, -1, 1f, 3);
+                        new Vector2(bounds.X + 24, y + 20), Game1.textColor, 1f, -1f, -1, -1, 1f, 3);
 
                     // Description
                     b.DrawString(Game1.smallFont, template.Description,
-                        new Vector2(bounds.X + 16, y + 32), Color.Gray);
+                        new Vector2(bounds.X + 24, y + 20 + this.lineH + 4), Color.Gray);
 
                     // Sub-task preview
-                    int subY = y + 56;
-                    for (int i = 0; i < Math.Min(template.SubTasks.Count, 3); i++)
+                    int subY = y + 20 + this.lineH * 2 + 8;
+                    int maxPreview = Math.Min(template.SubTasks.Count, 3);
+                    for (int i = 0; i < maxPreview; i++)
                     {
                         b.DrawString(Game1.smallFont, $"  - {template.SubTasks[i]}",
-                            new Vector2(bounds.X + 24, subY), Color.DimGray);
-                        subY += 20;
+                            new Vector2(bounds.X + 32, subY), Color.DimGray);
+                        subY += this.lineH + 2;
                     }
                     if (template.SubTasks.Count > 3)
                     {
                         b.DrawString(Game1.smallFont, $"  ... +{template.SubTasks.Count - 3} more",
-                            new Vector2(bounds.X + 24, subY), Color.DimGray);
+                            new Vector2(bounds.X + 32, subY), Color.DimGray);
                     }
 
                     // Toggle button
-                    int toggleX = bounds.X + contentWidth - 108;
-                    int toggleY = y + 8;
-                    Color btnColor = isEnabled ? Color.IndianRed : Color.LightGreen;
                     string btnText = isEnabled ? "Disable" : "Enable";
+                    int btnW = (int)Game1.smallFont.MeasureString(btnText).X + 40;
+                    int toggleX = bounds.X + cw - btnW - 12;
+                    int toggleY = y + 20;
+                    Color btnColor = isEnabled ? Color.IndianRed : Color.LightGreen;
 
                     IClickableMenu.drawTextureBox(b, Game1.mouseCursors,
                         new Rectangle(384, 396, 15, 15),
-                        toggleX, toggleY, 100, 36,
+                        toggleX, toggleY, btnW, this.btnH,
                         btnColor, 4f, false);
 
-                    var textSize = Game1.smallFont.MeasureString(btnText);
-                    b.DrawString(Game1.smallFont, btnText,
-                        new Vector2(toggleX + (100 - textSize.X) / 2, toggleY + (36 - textSize.Y) / 2),
-                        Game1.textColor);
+                    var ts = Game1.smallFont.MeasureString(btnText);
+                    Utility.drawTextWithShadow(b, btnText, Game1.smallFont,
+                        new Vector2(toggleX + (btnW - ts.X) / 2, toggleY + (this.btnH - ts.Y) / 2),
+                        Game1.textColor, 1f, -1f, -1, -1, 1f, 3);
                 }
-                y += TemplateRowHeight + 8;
+                y += rowH + 8;
             }
 
             this.scrollableList.EndScissorRect(b);
@@ -153,7 +172,6 @@ namespace StarDo.UI.Pages
                     this.taskManager.Data.EnabledTemplateIds.Add(template.Id);
                 Game1.playSound("coin");
             }
-
             this.taskManager.Save();
         }
     }
