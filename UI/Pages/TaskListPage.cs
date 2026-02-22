@@ -100,7 +100,7 @@ namespace StarDo.UI.Pages
 
             int inputWidth = contentArea.Width - addBtnW - newBtnW - 28;
             this.quickAddInput = new TextInputComponent(
-                contentArea.X, toolbarY + 8, inputWidth, this.lineH + 12, "Quick add task..."
+                contentArea.X, toolbarY, inputWidth, this.btnH, "Quick add task..."
             );
 
             this.addButton = new ClickableComponent(
