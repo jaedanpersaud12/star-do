@@ -1,0 +1,6 @@
+C:\Users\grego\source\repos\ToDoMod\ToDoMod\bin\Debug\ToDoMod.dll
+C:\Users\grego\source\repos\ToDoMod\ToDoMod\bin\Debug\ToDoMod.pdb
+C:\Users\grego\source\repos\ToDoMod\ToDoMod\obj\Debug\ToDoMod.csprojResolveAssemblyReference.cache
+C:\Users\grego\source\repos\ToDoMod\ToDoMod\obj\Debug\ToDoMod.csproj.CoreCompileInputs.cache
+C:\Users\grego\source\repos\ToDoMod\ToDoMod\obj\Debug\ToDoMod.dll
+C:\Users\grego\source\repos\ToDoMod\ToDoMod\obj\Debug\ToDoMod.pdb
