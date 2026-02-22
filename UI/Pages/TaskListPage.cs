@@ -40,7 +40,6 @@ namespace StarDo.UI.Pages
         private readonly int lineH;
         private readonly int filterBarHeight;
         private readonly int toolbarHeight;
-        private readonly int contextBarHeight;
         private readonly int summaryHeight;
         private readonly int sectionHeaderHeight;
         private readonly int sectionGap;
@@ -63,8 +62,6 @@ namespace StarDo.UI.Pages
         private static readonly Color MonthlyColor = new Color(102, 140, 180);
         private static readonly Color CompletedColor = new Color(60, 160, 60);
 
-        private static readonly string[] DayNames = { "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday" };
-
         public TaskListPage(TaskManager taskManager, Rectangle contentArea, PlannerMenu parentMenu)
         {
             this.taskManager = taskManager;
@@ -75,7 +72,6 @@ namespace StarDo.UI.Pages
             this.btnH = this.lineH + 48;
             this.filterBarHeight = this.btnH + 8;
             this.toolbarHeight = this.btnH + 8;
-            this.contextBarHeight = this.lineH * 3 + 24;
             this.summaryHeight = this.lineH + 8;
             this.sectionHeaderHeight = this.lineH + 16;
             this.sectionGap = 8;
@@ -116,9 +112,9 @@ namespace StarDo.UI.Pages
                 "newTaskBtn"
             ) { myID = 8001 };
 
-            // Scrollable list — below context bar and summary
-            int listTop = contentArea.Y + this.filterBarHeight + this.toolbarHeight + this.contextBarHeight + this.summaryHeight;
-            int listHeight = contentArea.Height - this.filterBarHeight - this.toolbarHeight - this.contextBarHeight - this.summaryHeight - 8;
+            // Scrollable list — below summary
+            int listTop = contentArea.Y + this.filterBarHeight + this.toolbarHeight + this.summaryHeight;
+            int listHeight = contentArea.Height - this.filterBarHeight - this.toolbarHeight - this.summaryHeight - 8;
             this.scrollableList = new ScrollableListComponent(
                 new Rectangle(contentArea.X, listTop, contentArea.Width, Math.Max(listHeight, 100))
             );
@@ -371,11 +367,8 @@ namespace StarDo.UI.Pages
             DrawButton(b, "+ Add", this.addButton.bounds, Color.LightGreen);
             DrawButton(b, "+ New Task", this.newTaskButton.bounds, new Color(180, 210, 255));
 
-            // ── Game Context Bar ──
-            this.DrawContextBar(b);
-
             // ── Summary line ──
-            int summaryY = contentArea.Y + this.filterBarHeight + this.toolbarHeight + this.contextBarHeight;
+            int summaryY = contentArea.Y + this.filterBarHeight + this.toolbarHeight;
             string summary = $"{this.totalActiveCount} active";
             if (this.completedTasks.Count > 0)
                 summary += $"  /  {this.completedTasks.Count} completed";
@@ -464,103 +457,6 @@ namespace StarDo.UI.Pages
             // Hover tooltip
             if (!string.IsNullOrEmpty(this.hoverTooltip))
                 IClickableMenu.drawHoverText(b, this.hoverTooltip, Game1.smallFont);
-        }
-
-        private void DrawContextBar(SpriteBatch b)
-        {
-            int barY = contentArea.Y + this.filterBarHeight + this.toolbarHeight;
-            int barX = contentArea.X;
-            int barW = contentArea.Width;
-
-            // Background
-            b.Draw(Game1.staminaRect, new Rectangle(barX, barY, barW, this.contextBarHeight),
-                new Color(60, 50, 40) * 0.12f);
-
-            int textX = barX + 8;
-            int textY = barY + 8;
-
-            // Line 1: Date + day of week
-            int dom = Game1.Date.DayOfMonth;
-            int dow = dom % 7; // 0=Sun, 1=Mon, ..., 6=Sat
-            string dayName = DayNames[dow];
-            string seasonStr = Game1.currentSeason ?? "spring";
-            string seasonCap = char.ToUpper(seasonStr[0]) + seasonStr[1..];
-            string dateLine = $"{dayName}, {seasonCap} {dom}, Year {Game1.Date.Year}";
-
-            // Weather
-            string weather = "Sunny";
-            if (Game1.isLightning) weather = "Stormy";
-            else if (Game1.isRaining) weather = "Rainy";
-            else if (Game1.isSnowing) weather = "Snowy";
-
-            string line1 = $"{dateLine}  |  {weather}";
-            Utility.drawTextWithShadow(b, line1, Game1.smallFont,
-                new Vector2(textX, textY), Game1.textColor, 1f, -1f, -1, -1, 1f, 3);
-            textY += this.lineH + 4;
-
-            // Line 2: Luck + season progress
-            double luck = Game1.player.DailyLuck;
-            string luckStr;
-            Color luckColor;
-            if (luck >= 0.07) { luckStr = "Great luck!"; luckColor = new Color(0, 180, 0); }
-            else if (luck >= 0.02) { luckStr = "Good luck"; luckColor = new Color(100, 180, 50); }
-            else if (luck >= -0.02) { luckStr = "Neutral luck"; luckColor = Color.Gray; }
-            else { luckStr = "Bad luck"; luckColor = new Color(200, 60, 60); }
-
-            int daysLeft = 28 - dom;
-            Utility.drawTextWithShadow(b, luckStr, Game1.smallFont,
-                new Vector2(textX, textY), luckColor, 1f, -1f, -1, -1, 1f, 3);
-
-            int luckW = (int)Game1.smallFont.MeasureString(luckStr + "  |  ").X;
-            b.DrawString(Game1.smallFont, "  |  ",
-                new Vector2(textX + (int)Game1.smallFont.MeasureString(luckStr).X, textY), Color.Gray * 0.5f);
-            b.DrawString(Game1.smallFont, $"{daysLeft} days left in {seasonCap}",
-                new Vector2(textX + luckW, textY), Color.Gray);
-            textY += this.lineH + 4;
-
-            // Line 3: Birthdays + festivals
-            var infoItems = new List<string>();
-
-            try
-            {
-                foreach (var npc in Utility.getAllCharacters())
-                {
-                    if (npc.Birthday_Season != null &&
-                        npc.Birthday_Season.Equals(seasonStr, StringComparison.OrdinalIgnoreCase) &&
-                        npc.Birthday_Day == dom)
-                    {
-                        infoItems.Add($"{npc.displayName}'s Birthday!");
-                    }
-                }
-            }
-            catch { /* safely ignore if NPC data unavailable */ }
-
-            try
-            {
-                for (int d = 0; d <= 3; d++)
-                {
-                    int checkDay = dom + d;
-                    if (checkDay > 28) break;
-                    if (Utility.isFestivalDay(checkDay, Game1.Date.Season))
-                    {
-                        infoItems.Add(d == 0 ? "Festival today!" : $"Festival in {d} days");
-                        break;
-                    }
-                }
-            }
-            catch { /* safely ignore */ }
-
-            if (infoItems.Count > 0)
-            {
-                string infoLine = string.Join("  |  ", infoItems);
-                b.DrawString(Game1.smallFont, infoLine,
-                    new Vector2(textX, textY), new Color(180, 100, 40));
-            }
-            else
-            {
-                b.DrawString(Game1.smallFont, "No events today",
-                    new Vector2(textX, textY), Color.Gray * 0.5f);
-            }
         }
 
         private void DrawSectionHeader(SpriteBatch b, string text, Color color, Rectangle listBounds, int y)
