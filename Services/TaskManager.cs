@@ -126,7 +126,7 @@ namespace StarDo.Services
 
         public void Save()
         {
-            this.helper.WriteJsonFile($"data/{Constants.SaveFolderName}.json", this.data);
+            this.helper.Data.WriteJsonFile($"data/{Constants.SaveFolderName}.json", this.data);
         }
     }
 }

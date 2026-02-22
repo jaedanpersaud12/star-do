@@ -12,13 +12,13 @@ namespace StarDo.Services
             string path = $"data/{Constants.SaveFolderName}.json";
 
             // Try reading raw JSON to detect format
-            var raw = helper.ReadJsonFile<JObject>(path);
+            var raw = helper.Data.ReadJsonFile<JObject>(path);
             if (raw == null)
                 return new PlannerData();
 
             // New format has DataVersion field
             if (raw.ContainsKey("DataVersion"))
-                return helper.ReadJsonFile<PlannerData>(path) ?? new PlannerData();
+                return helper.Data.ReadJsonFile<PlannerData>(path) ?? new PlannerData();
 
             // Old format: { "SavedTasks": ["task1", "task2", ...] }
             monitor.Log("Migrating old task data to new planner format...", LogLevel.Info);
@@ -46,7 +46,7 @@ namespace StarDo.Services
             }
 
             // Save in new format immediately
-            helper.WriteJsonFile(path, data);
+            helper.Data.WriteJsonFile(path, data);
             monitor.Log($"Migration complete. Converted {data.Tasks.Count} tasks.", LogLevel.Info);
 
             return data;
