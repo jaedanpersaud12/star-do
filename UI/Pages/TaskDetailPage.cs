@@ -35,6 +35,9 @@ namespace StarDo.UI.Pages
         private static readonly string[] PriorityNames = { "Daily", "Weekly", "Long-term" };
         private static readonly int PriorityCount = Enum.GetValues(typeof(TaskPriority)).Length;
 
+        // Border overhead for drawTextureBox with (384,396,15,15) at 4f = 20px per side
+        private const int BoxBorder = 20;
+
         private readonly int lineH;
         private readonly int btnH;
         private readonly int inputH;
@@ -50,23 +53,23 @@ namespace StarDo.UI.Pages
             this.parentMenu = parentMenu;
 
             this.lineH = (int)Game1.smallFont.MeasureString("Tg").Y;
-            this.btnH = this.lineH + 24;
+            this.btnH = this.lineH + BoxBorder * 2 + 8; // text + borders + 4px padding each side
             this.inputH = this.lineH + 16;
-            this.spacing = 12;
+            this.spacing = 16;
             this.subItemH = this.lineH + 16;
             this.checkboxSize = this.lineH + 8;
 
-            int dialogWidth = Math.Clamp((int)(Game1.uiViewport.Width * 0.55f), 600, 900);
-            int dialogHeight = Math.Clamp((int)(Game1.uiViewport.Height * 0.75f), 500, 800);
+            int dialogWidth = Math.Clamp((int)(Game1.uiViewport.Width * 0.55f), 640, 960);
+            int dialogHeight = Math.Clamp((int)(Game1.uiViewport.Height * 0.8f), 540, 860);
             var center = Utility.getTopLeftPositionForCenteringOnScreen(dialogWidth, dialogHeight);
             this.dialogBounds = new Rectangle((int)center.X, (int)center.Y, dialogWidth, dialogHeight);
 
             int borderW = IClickableMenu.borderWidth;
             int topSpace = IClickableMenu.spaceToClearTopBorder;
-            int innerX = this.dialogBounds.X + borderW + 8;
+            int innerX = this.dialogBounds.X + borderW + 12;
             int innerY = this.dialogBounds.Y + borderW + topSpace;
-            int innerW = this.dialogBounds.Width - borderW * 2 - 16;
-            int innerH = this.dialogBounds.Height - borderW * 2 - topSpace - this.btnH - 24;
+            int innerW = this.dialogBounds.Width - borderW * 2 - 24;
+            int innerH = this.dialogBounds.Height - borderW * 2 - topSpace - this.btnH - 32;
 
             this.scrollableList = new ScrollableListComponent(
                 new Rectangle(innerX, innerY, innerW, innerH)
@@ -78,22 +81,74 @@ namespace StarDo.UI.Pages
             this.notesInput = new TextInputComponent(0, 0, innerW, this.inputH, "Why am I doing this?");
             this.notesInput.Text = task.Notes;
 
-            this.subTaskInput = new TextInputComponent(0, 0, innerW - 100, this.inputH, "Add sub-task...");
+            this.subTaskInput = new TextInputComponent(0, 0, innerW - 120, this.inputH, "Add sub-task...");
 
-            // Bottom buttons
-            int totalBtnW = 120 * 3 + this.spacing * 2;
+            // Bottom buttons — auto-sized to text
+            int saveBtnW = MeasureBtnWidth("Save");
+            int cancelBtnW = MeasureBtnWidth("Cancel");
+            int deleteBtnW = MeasureBtnWidth("Confirm?"); // size for widest text
+            int btnGap = 16;
+            int totalBtnW = saveBtnW + cancelBtnW + (this.isNew ? 0 : deleteBtnW + btnGap) + btnGap;
             int btnX = this.dialogBounds.X + (this.dialogBounds.Width - totalBtnW) / 2;
-            int btnY = this.dialogBounds.Bottom - borderW - this.btnH - 8;
+            int btnY = this.dialogBounds.Bottom - borderW - this.btnH - 12;
 
-            this.saveButton = new ClickableComponent(new Rectangle(btnX, btnY, 120, this.btnH), "save");
-            this.cancelButton = new ClickableComponent(new Rectangle(btnX + 120 + this.spacing, btnY, 120, this.btnH), "cancel");
-            this.deleteButton = new ClickableComponent(new Rectangle(btnX + (120 + this.spacing) * 2, btnY, 120, this.btnH), "delete");
+            this.saveButton = new ClickableComponent(new Rectangle(btnX, btnY, saveBtnW, this.btnH), "save");
+            this.cancelButton = new ClickableComponent(new Rectangle(btnX + saveBtnW + btnGap, btnY, cancelBtnW, this.btnH), "cancel");
+            this.deleteButton = new ClickableComponent(new Rectangle(btnX + saveBtnW + cancelBtnW + btnGap * 2, btnY, deleteBtnW, this.btnH), "delete");
 
             this.UpdateContentHeight();
         }
 
+        private int MeasureBtnWidth(string text)
+        {
+            return (int)Game1.smallFont.MeasureString(text).X + BoxBorder * 2 + 16;
+        }
+
         private int GetInputX() => this.scrollableList.Bounds.X;
         private int GetInputW() => this.scrollableList.Bounds.Width;
+
+        // Shared layout calculation — returns Y offsets for all sections
+        private void CalcLayout(int startY, int iw, out int titleY, out int notesLabelY, out int notesY,
+                                out int optY, out int[] optBtnWidths, out int[] optBtnX,
+                                out int subLabelY, out int subInputY, out int addBtnW, out int itemsStartY)
+        {
+            int ix = this.GetInputX();
+
+            // Title
+            titleY = startY + this.lineH + 8;
+
+            // Notes
+            notesLabelY = titleY + this.inputH + this.spacing;
+            notesY = notesLabelY + this.lineH + 4;
+
+            // Options — auto-sized buttons in a row
+            optY = notesY + this.inputH + this.spacing;
+
+            string catText = CategoryNames[(int)this.task.Category];
+            string priText = PriorityNames[(int)this.task.Priority];
+            string recurText = this.task.IsRecurring ? "Recurring: ON" : "Recurring: OFF";
+
+            optBtnWidths = new int[]
+            {
+                MeasureBtnWidth(catText),
+                MeasureBtnWidth(priText),
+                MeasureBtnWidth(recurText)
+            };
+            optBtnX = new int[]
+            {
+                ix,
+                ix + optBtnWidths[0] + 8,
+                ix + optBtnWidths[0] + optBtnWidths[1] + 16
+            };
+
+            // Sub-tasks
+            subLabelY = optY + this.btnH + this.spacing;
+            addBtnW = MeasureBtnWidth("+ Add");
+            subInputY = subLabelY + this.lineH + 8;
+
+            // Items
+            itemsStartY = subInputY + this.inputH + this.spacing;
+        }
 
         public void ReceiveLeftClick(int x, int y)
         {
@@ -128,54 +183,50 @@ namespace StarDo.UI.Pages
             this.notesInput.Deselect();
             this.subTaskInput.Deselect();
 
-            // Hit test against laid-out positions
             int cy = this.scrollableList.Bounds.Y - this.scrollableList.ScrollOffset;
             int ix = this.GetInputX();
             int iw = this.GetInputW();
 
-            // Title
-            int titleY = cy + this.lineH + 4;
+            this.CalcLayout(cy, iw, out int titleY, out int notesLabelY, out int notesY,
+                            out int optY, out int[] optBtnWidths, out int[] optBtnX,
+                            out int subLabelY, out int subInputY, out int addBtnW, out int itemsStartY);
+
+            // Title input
             if (new Rectangle(ix, titleY, iw, this.inputH).Contains(x, y)) { this.titleInput.Select(); return; }
 
-            // Notes
-            int notesY = titleY + this.inputH + this.lineH + this.spacing;
+            // Notes input
             if (new Rectangle(ix, notesY, iw, this.inputH).Contains(x, y)) { this.notesInput.Select(); return; }
 
             // Option buttons
-            int optY = notesY + this.inputH + this.spacing + 4;
-            int optBtnW = (iw - this.spacing * 2) / 3;
-            if (new Rectangle(ix, optY, optBtnW, this.btnH).Contains(x, y))
+            if (new Rectangle(optBtnX[0], optY, optBtnWidths[0], this.btnH).Contains(x, y))
             {
                 this.task.Category = (TaskCategory)(((int)this.task.Category + 1) % CategoryCount);
                 Game1.playSound("shwip"); return;
             }
-            if (new Rectangle(ix + optBtnW + this.spacing, optY, optBtnW, this.btnH).Contains(x, y))
+            if (new Rectangle(optBtnX[1], optY, optBtnWidths[1], this.btnH).Contains(x, y))
             {
                 this.task.Priority = (TaskPriority)(((int)this.task.Priority + 1) % PriorityCount);
                 Game1.playSound("shwip"); return;
             }
-            if (new Rectangle(ix + (optBtnW + this.spacing) * 2, optY, optBtnW, this.btnH).Contains(x, y))
+            if (new Rectangle(optBtnX[2], optY, optBtnWidths[2], this.btnH).Contains(x, y))
             {
                 this.task.IsRecurring = !this.task.IsRecurring;
                 Game1.playSound("shwip"); return;
             }
 
             // Sub-task input
-            int subLabelY = optY + this.btnH + this.spacing;
-            int subInputY = subLabelY + this.lineH + 4;
-            if (new Rectangle(ix, subInputY, iw - 100, this.inputH).Contains(x, y))
+            if (new Rectangle(ix, subInputY, iw - addBtnW - 8, this.inputH).Contains(x, y))
             {
                 this.subTaskInput.Select(); return;
             }
             // Add sub-task button
-            int addBtnW = 88;
             if (new Rectangle(ix + iw - addBtnW, subInputY, addBtnW, this.btnH).Contains(x, y))
             {
                 this.AddSubTask(); return;
             }
 
             // Sub-task items
-            int itemY = subInputY + this.inputH + this.spacing;
+            int itemY = itemsStartY;
             for (int i = 0; i < this.task.SubTasks.Count; i++)
             {
                 var cbRect = new Rectangle(ix, itemY + (this.subItemH - this.checkboxSize) / 2, this.checkboxSize, this.checkboxSize);
@@ -185,7 +236,7 @@ namespace StarDo.UI.Pages
                     Game1.playSound("coin"); return;
                 }
 
-                var delRect = new Rectangle(ix + iw - 36, itemY + (this.subItemH - this.checkboxSize) / 2, this.checkboxSize, this.checkboxSize);
+                var delRect = new Rectangle(ix + iw - 40, itemY + (this.subItemH - this.checkboxSize) / 2, this.checkboxSize, this.checkboxSize);
                 if (delRect.Contains(x, y))
                 {
                     this.task.SubTasks.RemoveAt(i);
@@ -233,40 +284,38 @@ namespace StarDo.UI.Pages
             int ix = this.GetInputX();
             int iw = this.GetInputW();
 
+            this.CalcLayout(cy, iw, out int titleY, out int notesLabelY, out int notesY,
+                            out int optY, out int[] optBtnWidths, out int[] optBtnX,
+                            out int subLabelY, out int subInputY, out int addBtnW, out int itemsStartY);
+
             // Title
             Utility.drawTextWithShadow(b, "Title:", Game1.smallFont, new Vector2(ix, cy), Game1.textColor, 1f, -1f, -1, -1, 1f, 3);
-            int titleY = cy + this.lineH + 4;
             this.titleInput.Reposition(ix, titleY, iw, this.inputH);
             this.titleInput.Draw(b);
 
             // Notes
-            int notesLabelY = titleY + this.inputH + this.spacing;
             Utility.drawTextWithShadow(b, "Notes (why?):", Game1.smallFont, new Vector2(ix, notesLabelY), Game1.textColor, 1f, -1f, -1, -1, 1f, 3);
-            int notesY = notesLabelY + this.lineH;
             this.notesInput.Reposition(ix, notesY, iw, this.inputH);
             this.notesInput.Draw(b);
 
-            // Options row
-            int optY = notesY + this.inputH + this.spacing + 4;
-            int optBtnW = (iw - this.spacing * 2) / 3;
+            // Options row — auto-sized buttons
+            string catText = CategoryNames[(int)this.task.Category];
+            string priText = PriorityNames[(int)this.task.Priority];
+            string recurText = this.task.IsRecurring ? "Recurring: ON" : "Recurring: OFF";
 
-            DrawBtn(b, "Cat: " + CategoryNames[(int)this.task.Category], ix, optY, optBtnW, this.btnH, Color.LightBlue);
-            DrawBtn(b, "Pri: " + PriorityNames[(int)this.task.Priority], ix + optBtnW + this.spacing, optY, optBtnW, this.btnH, Color.LightGoldenrodYellow);
-            DrawBtn(b, this.task.IsRecurring ? "Recurring: ON" : "Recurring: OFF",
-                ix + (optBtnW + this.spacing) * 2, optY, optBtnW, this.btnH,
+            DrawBtn(b, catText, optBtnX[0], optY, optBtnWidths[0], this.btnH, Color.LightBlue);
+            DrawBtn(b, priText, optBtnX[1], optY, optBtnWidths[1], this.btnH, Color.LightGoldenrodYellow);
+            DrawBtn(b, recurText, optBtnX[2], optY, optBtnWidths[2], this.btnH,
                 this.task.IsRecurring ? Color.LightGreen : Color.LightGray);
 
             // Sub-tasks
-            int subLabelY = optY + this.btnH + this.spacing;
             Utility.drawTextWithShadow(b, "Sub-tasks:", Game1.smallFont, new Vector2(ix, subLabelY), Game1.textColor, 1f, -1f, -1, -1, 1f, 3);
 
-            int subInputY = subLabelY + this.lineH + 4;
-            int addBtnW = 88;
-            this.subTaskInput.Reposition(ix, subInputY, iw - addBtnW - this.spacing, this.inputH);
+            this.subTaskInput.Reposition(ix, subInputY, iw - addBtnW - 8, this.inputH);
             this.subTaskInput.Draw(b);
             DrawBtn(b, "+ Add", ix + iw - addBtnW, subInputY, addBtnW, this.btnH, Color.LightGreen);
 
-            int itemY = subInputY + this.inputH + this.spacing;
+            int itemY = itemsStartY;
             for (int i = 0; i < this.task.SubTasks.Count; i++)
             {
                 var sub = this.task.SubTasks[i];
@@ -276,7 +325,7 @@ namespace StarDo.UI.Pages
                 IClickableMenu.drawTextureBox(b, Game1.mouseCursors,
                     new Rectangle(403, 383, 6, 6),
                     ix, cbY, this.checkboxSize, this.checkboxSize,
-                    Color.White, 4f, false);
+                    sub.IsCompleted ? new Color(200, 240, 200) : Color.White, 4f, false);
                 if (sub.IsCompleted)
                 {
                     int inset = 8;
@@ -288,10 +337,10 @@ namespace StarDo.UI.Pages
                 // Text
                 Color textColor = sub.IsCompleted ? Color.Gray : Game1.textColor;
                 b.DrawString(Game1.smallFont, sub.Text,
-                    new Vector2(ix + this.checkboxSize + 8, itemY + (this.subItemH - this.lineH) / 2), textColor);
+                    new Vector2(ix + this.checkboxSize + 12, itemY + (this.subItemH - this.lineH) / 2), textColor);
 
                 // Delete X
-                DrawBtn(b, "X", ix + iw - 36, cbY, this.checkboxSize, this.checkboxSize, Color.IndianRed);
+                DrawBtn(b, "X", ix + iw - 40, cbY, this.checkboxSize, this.checkboxSize, Color.IndianRed);
 
                 itemY += this.subItemH;
             }
@@ -363,12 +412,11 @@ namespace StarDo.UI.Pages
 
         private void UpdateContentHeight()
         {
-            // title label + input + notes label + input + options + subtask label + input + items
-            int h = this.lineH + 4 + this.inputH + this.spacing
-                   + this.lineH + this.inputH + this.spacing + 4
-                   + this.btnH + this.spacing
-                   + this.lineH + 4 + this.inputH + this.spacing
-                   + this.task.SubTasks.Count * this.subItemH + 20;
+            int h = this.lineH + 8 + this.inputH + this.spacing         // Title label + input
+                   + this.lineH + 4 + this.inputH + this.spacing         // Notes label + input
+                   + this.btnH + this.spacing                            // Options row
+                   + this.lineH + 8 + this.inputH + this.spacing         // Sub-task label + input
+                   + this.task.SubTasks.Count * this.subItemH + 24;      // Sub-task items + bottom pad
             this.scrollableList.SetContentHeight(h);
         }
     }

@@ -69,22 +69,22 @@ namespace StarDo.UI.Pages
             this.contentArea = contentArea;
 
             this.lineH = (int)Game1.smallFont.MeasureString("Tg").Y;
-            this.btnH = this.lineH + 24;
-            this.filterBarHeight = this.lineH + 24;
+            // drawTextureBox (384,396,15,15) at 4f = 20px border per side = 40px overhead
+            this.btnH = this.lineH + 48; // text + 40px borders + 4px padding each side
+            this.filterBarHeight = this.btnH + 8;
             this.toolbarHeight = this.btnH + 8;
             this.summaryHeight = this.lineH + 8;
             this.sectionHeaderHeight = this.lineH + 16;
             this.sectionGap = 8;
 
-            // Filter buttons
+            // Filter buttons — text + 40px border overhead + 16px horizontal padding
             int filterX = contentArea.X;
-            int filterBtnH = this.lineH + 16;
             for (int i = 0; i < filterLabels.Length; i++)
             {
                 int textW = (int)Game1.smallFont.MeasureString(filterLabels[i]).X;
-                int btnWidth = textW + 32;
+                int btnWidth = textW + 56;
                 filterButtons[i] = new ClickableComponent(
-                    new Rectangle(filterX, contentArea.Y + 4, btnWidth, filterBtnH),
+                    new Rectangle(filterX, contentArea.Y + 4, btnWidth, this.btnH),
                     i.ToString()
                 ) { myID = 7000 + i };
                 filterX += btnWidth + 4;
@@ -94,13 +94,13 @@ namespace StarDo.UI.Pages
             int toolbarY = contentArea.Y + this.filterBarHeight;
 
             int newBtnTextW = (int)Game1.smallFont.MeasureString("+ New Task").X;
-            int newBtnW = newBtnTextW + 32;
+            int newBtnW = newBtnTextW + 56;
             int addBtnTextW = (int)Game1.smallFont.MeasureString("+ Add").X;
-            int addBtnW = addBtnTextW + 32;
+            int addBtnW = addBtnTextW + 56;
 
             int inputWidth = contentArea.Width - addBtnW - newBtnW - 28;
             this.quickAddInput = new TextInputComponent(
-                contentArea.X, toolbarY + 4, inputWidth, this.lineH + 8, "Quick add task..."
+                contentArea.X, toolbarY + 8, inputWidth, this.lineH + 12, "Quick add task..."
             );
 
             this.addButton = new ClickableComponent(

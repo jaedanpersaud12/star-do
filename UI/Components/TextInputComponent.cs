@@ -77,13 +77,22 @@ namespace StarDo.UI.Components
 
         public void Draw(SpriteBatch b)
         {
-            // Background box around the textbox
-            IClickableMenu.drawTextureBox(b, Game1.mouseCursors,
-                new Rectangle(403, 383, 6, 6),
-                this.TextBox.X - 12, this.TextBox.Y - 8,
-                this.TextBox.Width + 24, this.TextBox.Height + 16,
-                this.IsSelected ? Color.Wheat : Color.White,
-                4f, false);
+            int pad = 4;
+            int bx = this.TextBox.X - pad;
+            int by = this.TextBox.Y - pad;
+            int bw = this.TextBox.Width + pad * 2;
+            int bh = this.TextBox.Height + pad * 2;
+
+            // Simple filled background with thin border
+            Color bgColor = this.IsSelected ? new Color(255, 250, 230) : new Color(250, 245, 235);
+            b.Draw(Game1.staminaRect, new Rectangle(bx, by, bw, bh), bgColor);
+
+            // Border lines
+            Color borderColor = this.IsSelected ? new Color(180, 140, 60) : new Color(160, 130, 90) * 0.6f;
+            b.Draw(Game1.staminaRect, new Rectangle(bx, by, bw, 2), borderColor);
+            b.Draw(Game1.staminaRect, new Rectangle(bx, by + bh - 2, bw, 2), borderColor);
+            b.Draw(Game1.staminaRect, new Rectangle(bx, by, 2, bh), borderColor);
+            b.Draw(Game1.staminaRect, new Rectangle(bx + bw - 2, by, 2, bh), borderColor);
 
             this.TextBox.Draw(b);
 

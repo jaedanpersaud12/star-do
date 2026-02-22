@@ -49,7 +49,7 @@ namespace StarDo.UI.Pages
             this.lineH = (int)Game1.smallFont.MeasureString("Tg").Y;
             this.headerH = (int)Game1.dialogueFont.MeasureString("Tg").Y + 12;
             this.groupHeaderH = this.lineH + 16;
-            this.btnH = this.lineH + 24;
+            this.btnH = this.lineH + 48;
             this.seasonBadgeH = this.lineH - 2;
             this.seasonBadgeW = (int)Game1.smallFont.MeasureString("Sum").X + 16;
             this.groupGap = 20;
@@ -113,7 +113,7 @@ namespace StarDo.UI.Pages
                     if (rowY + rowH > bounds.Y && rowY < bounds.Bottom)
                     {
                         string btnText = this.taskManager.HasTasksForTemplate(template.Id) ? "Disable" : "Enable";
-                        int btnW = (int)Game1.smallFont.MeasureString(btnText).X + 40;
+                        int btnW = (int)Game1.smallFont.MeasureString(btnText).X + 56;
                         int toggleX = bounds.X + cw - btnW - 12;
                         int toggleY = rowY + this.rowPad;
 
@@ -204,7 +204,7 @@ namespace StarDo.UI.Pages
 
             // Toggle button (top right)
             string btnText = isEnabled ? "Disable" : "Enable";
-            int btnW = (int)Game1.smallFont.MeasureString(btnText).X + 40;
+            int btnW = (int)Game1.smallFont.MeasureString(btnText).X + 56;
             int toggleX = x + w - btnW - 12;
             Color btnColor = isEnabled ? Color.IndianRed : Color.LightGreen;
 
