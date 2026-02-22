@@ -5,6 +5,7 @@
     <AssemblyName>StarDo</AssemblyName>
     <RootNamespace>StarDo</RootNamespace>
     <EnableHarmony>false</EnableHarmony>
+    <GamePath>C:\Games</GamePath>
   </PropertyGroup>
 
   <ItemGroup>
