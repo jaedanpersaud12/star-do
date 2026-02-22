@@ -5,7 +5,7 @@
     <AssemblyName>StarDo</AssemblyName>
     <RootNamespace>StarDo</RootNamespace>
     <EnableHarmony>false</EnableHarmony>
-    <GamePath>C:\Games</GamePath>
+    <GamePath>C:\Games\Stardew Valley</GamePath>
   </PropertyGroup>
 
   <ItemGroup>
