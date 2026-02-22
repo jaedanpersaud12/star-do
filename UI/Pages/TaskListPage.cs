@@ -541,7 +541,7 @@ namespace StarDo.UI.Pages
                 {
                     int checkDay = dom + d;
                     if (checkDay > 28) break;
-                    if (Utility.isFestivalDay(checkDay, seasonStr))
+                    if (Utility.isFestivalDay(checkDay, Game1.Date.Season))
                     {
                         infoItems.Add(d == 0 ? "Festival today!" : $"Festival in {d} days");
                         break;
