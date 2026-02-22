@@ -26,7 +26,7 @@ namespace StarDo.UI.Components
             if (height < lineH + 16)
                 height = lineH + 16;
 
-            this.TextBox = new TextBox(null, null, Game1.smallFont, Game1.textColor)
+            this.TextBox = new BackgroundlessTextBox(Game1.smallFont, Game1.textColor)
             {
                 X = x,
                 Y = y,
@@ -94,6 +94,7 @@ namespace StarDo.UI.Components
             b.Draw(Game1.staminaRect, new Rectangle(bx, by, 2, bh), borderColor);
             b.Draw(Game1.staminaRect, new Rectangle(bx + bw - 2, by, 2, bh), borderColor);
 
+            // Draw the TextBox (our subclass skips the background, only renders text + cursor)
             this.TextBox.Draw(b);
 
             // Placeholder text
@@ -102,6 +103,54 @@ namespace StarDo.UI.Components
                 b.DrawString(Game1.smallFont, this.placeholder,
                     new Vector2(this.TextBox.X + 12, this.TextBox.Y + 8),
                     Color.Gray * 0.5f);
+            }
+        }
+
+        /// <summary>
+        /// TextBox subclass that skips background rendering.
+        /// The base TextBox.Draw() calls Game1.drawDialogueBox() when no texture is provided,
+        /// which draws thick wooden borders. This override renders only the text and caret.
+        /// </summary>
+        private class BackgroundlessTextBox : TextBox
+        {
+            public BackgroundlessTextBox(SpriteFont font, Color textColor)
+                : base(null, null, font, textColor) { }
+
+            public override void Draw(SpriteBatch spriteBatch, bool drawShadow = true)
+            {
+                bool caretVisible = Game1.currentGameTime.TotalGameTime.TotalMilliseconds % 1000.0 >= 500.0;
+
+                string text = this.Text ?? "";
+
+                // Trim text from left if it overflows the width
+                Vector2 textSize = this._font.MeasureString(text);
+                while (textSize.X > this.Width - 32 && text.Length > 0)
+                {
+                    text = text.Substring(1);
+                    textSize = this._font.MeasureString(text);
+                }
+
+                // Draw blinking caret
+                if (caretVisible && this.Selected)
+                {
+                    spriteBatch.Draw(Game1.staminaRect,
+                        new Rectangle(this.X + 16 + (int)textSize.X + 2, this.Y + 8, 4, 32),
+                        this._textColor);
+                }
+
+                // Draw text
+                if (drawShadow)
+                {
+                    Utility.drawTextWithShadow(spriteBatch, text, this._font,
+                        new Vector2(this.X + 16, this.Y + 8),
+                        this._textColor, 1f, -1f, -1, -1, 1f, 3);
+                }
+                else
+                {
+                    spriteBatch.DrawString(this._font, text,
+                        new Vector2(this.X + 16, this.Y + 8),
+                        this._textColor, 0f, Vector2.Zero, 1f, SpriteEffects.None, 0.99f);
+                }
             }
         }
     }
