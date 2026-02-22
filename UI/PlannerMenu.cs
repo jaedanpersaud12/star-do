@@ -188,14 +188,22 @@ namespace StarDo.UI
             }
 
             SButton sButton = key.ToSButton();
-            if ((sButton == SButton.Escape || sButton == this.config.OpenListKey) && this.readyToClose() && this.canClose)
+
+            // On the first keypress after opening, only block the key that opened the menu
+            // (prevents F2 from immediately re-closing). Escape always works on first press.
+            if (!this.canClose)
+            {
+                this.canClose = true;
+                if (sButton == this.config.OpenListKey)
+                    return;
+            }
+
+            if ((sButton == SButton.Escape || sButton == this.config.OpenListKey) && this.readyToClose())
             {
                 Game1.playSound("bigDeSelect");
                 this.exitThisMenu();
                 return;
             }
-
-            this.canClose = true;
 
             if (this.tabBar.ActiveTab == 0)
                 this.taskListPage.ReceiveKeyPress(key);

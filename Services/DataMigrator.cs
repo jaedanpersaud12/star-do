@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using Newtonsoft.Json.Linq;
 using StardewModdingAPI;
@@ -11,45 +12,66 @@ namespace StarDo.Services
         {
             string path = $"data/{Constants.SaveFolderName}.json";
 
-            // Try reading raw JSON to detect format
-            var raw = helper.Data.ReadJsonFile<JObject>(path);
-            if (raw == null)
-                return new PlannerData();
-
-            // New format has DataVersion field
-            if (raw.ContainsKey("DataVersion"))
-                return helper.Data.ReadJsonFile<PlannerData>(path) ?? new PlannerData();
-
-            // Old format: { "SavedTasks": ["task1", "task2", ...] }
-            monitor.Log("Migrating old task data to new planner format...", LogLevel.Info);
-
-            var data = new PlannerData();
-            var savedTasks = raw["SavedTasks"] as JArray;
-            if (savedTasks != null)
+            try
             {
-                int sortOrder = 0;
-                foreach (var token in savedTasks)
+                // Try reading raw JSON to detect format
+                var raw = helper.Data.ReadJsonFile<JObject>(path);
+                if (raw == null)
+                    return new PlannerData();
+
+                // New format has DataVersion field
+                if (raw.ContainsKey("DataVersion"))
                 {
-                    string title = token.ToString();
-                    if (!string.IsNullOrWhiteSpace(title))
+                    var data = helper.Data.ReadJsonFile<PlannerData>(path);
+                    if (data == null)
                     {
-                        data.Tasks.Add(new PlannerTask
+                        monitor.Log("Failed to deserialize planner data, starting fresh.", LogLevel.Error);
+                        return new PlannerData();
+                    }
+                    return data;
+                }
+
+                // Old format: { "SavedTasks": ["task1", "task2", ...] }
+                monitor.Log("Migrating old task data to new planner format...", LogLevel.Info);
+
+                var migrated = new PlannerData();
+                var savedTasks = raw["SavedTasks"] as JArray;
+                if (savedTasks != null)
+                {
+                    int sortOrder = 0;
+                    foreach (var token in savedTasks)
+                    {
+                        string title = token?.ToString();
+                        if (!string.IsNullOrWhiteSpace(title))
                         {
-                            Title = title,
-                            Category = TaskCategory.Farm,
-                            Priority = TaskPriority.LongTerm,
-                            IsRecurring = false,
-                            SortOrder = sortOrder++
-                        });
+                            migrated.Tasks.Add(new PlannerTask
+                            {
+                                Title = title,
+                                Category = TaskCategory.Farm,
+                                Priority = TaskPriority.LongTerm,
+                                IsRecurring = false,
+                                SortOrder = sortOrder++
+                            });
+                        }
                     }
                 }
+                else
+                {
+                    monitor.Log("Old save data found but no 'SavedTasks' field detected. Starting fresh.", LogLevel.Warn);
+                }
+
+                // Save in new format immediately
+                helper.Data.WriteJsonFile(path, migrated);
+                monitor.Log($"Migration complete. Converted {migrated.Tasks.Count} tasks.", LogLevel.Info);
+
+                return migrated;
             }
-
-            // Save in new format immediately
-            helper.Data.WriteJsonFile(path, data);
-            monitor.Log($"Migration complete. Converted {data.Tasks.Count} tasks.", LogLevel.Info);
-
-            return data;
+            catch (Exception ex)
+            {
+                monitor.Log($"Error loading planner data: {ex.Message}", LogLevel.Error);
+                monitor.Log("Starting with empty task list to avoid data loss. Check the file manually.", LogLevel.Warn);
+                return new PlannerData();
+            }
         }
     }
 }

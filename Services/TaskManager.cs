@@ -19,6 +19,24 @@ namespace StarDo.Services
             this.helper = helper;
             this.monitor = monitor;
             this.data = DataMigrator.LoadOrMigrate(helper, monitor);
+            this.ValidateLoadedData();
+        }
+
+        private void ValidateLoadedData()
+        {
+            foreach (var task in this.data.Tasks)
+            {
+                if (!Enum.IsDefined(typeof(TaskCategory), task.Category))
+                {
+                    this.monitor.Log($"Task '{task.Title}' has invalid category {(int)task.Category}, resetting to Farm.", LogLevel.Warn);
+                    task.Category = TaskCategory.Farm;
+                }
+                if (!Enum.IsDefined(typeof(TaskPriority), task.Priority))
+                {
+                    this.monitor.Log($"Task '{task.Title}' has invalid priority {(int)task.Priority}, resetting to LongTerm.", LogLevel.Warn);
+                    task.Priority = TaskPriority.LongTerm;
+                }
+            }
         }
 
         public void AddTask(PlannerTask task)

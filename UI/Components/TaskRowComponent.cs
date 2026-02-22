@@ -182,32 +182,36 @@ namespace StarDo.UI.Components
                 b.DrawString(Game1.smallFont, progText,
                     new Vector2(progTextX, titleY), progTextColor * alpha);
 
-                // Progress bar
+                // Progress bar — only draw if there's enough room
                 int barW = 80;
                 int barH = 8;
                 int barX = progTextX - barW - 8;
-                int barY = titleY + (LineH - barH) / 2;
 
-                // Background track
-                b.Draw(Game1.staminaRect,
-                    new Rectangle(barX, barY, barW, barH),
-                    ProgressBg);
-
-                // Fill
-                Color fillColor = allDone ? ProgressFillComplete : ProgressFillIncomplete;
-                int fillW = (int)(barW * progress);
-                if (fillW > 0)
+                if (barX > contentX + 20)
                 {
-                    b.Draw(Game1.staminaRect,
-                        new Rectangle(barX, barY, fillW, barH),
-                        fillColor * (alpha * 0.8f));
-                }
+                    int barY = titleY + (LineH - barH) / 2;
 
-                // Border around track
-                b.Draw(Game1.staminaRect, new Rectangle(barX, barY, barW, 1), Color.Black * (alpha * 0.15f));
-                b.Draw(Game1.staminaRect, new Rectangle(barX, barY + barH - 1, barW, 1), Color.Black * (alpha * 0.15f));
-                b.Draw(Game1.staminaRect, new Rectangle(barX, barY, 1, barH), Color.Black * (alpha * 0.15f));
-                b.Draw(Game1.staminaRect, new Rectangle(barX + barW - 1, barY, 1, barH), Color.Black * (alpha * 0.15f));
+                    // Background track
+                    b.Draw(Game1.staminaRect,
+                        new Rectangle(barX, barY, barW, barH),
+                        ProgressBg);
+
+                    // Fill
+                    Color fillColor = allDone ? ProgressFillComplete : ProgressFillIncomplete;
+                    int fillW = (int)(barW * progress);
+                    if (fillW > 0)
+                    {
+                        b.Draw(Game1.staminaRect,
+                            new Rectangle(barX, barY, fillW, barH),
+                            fillColor * (alpha * 0.8f));
+                    }
+
+                    // Border around track
+                    b.Draw(Game1.staminaRect, new Rectangle(barX, barY, barW, 1), Color.Black * (alpha * 0.15f));
+                    b.Draw(Game1.staminaRect, new Rectangle(barX, barY + barH - 1, barW, 1), Color.Black * (alpha * 0.15f));
+                    b.Draw(Game1.staminaRect, new Rectangle(barX, barY, 1, barH), Color.Black * (alpha * 0.15f));
+                    b.Draw(Game1.staminaRect, new Rectangle(barX + barW - 1, barY, 1, barH), Color.Black * (alpha * 0.15f));
+                }
             }
         }
 

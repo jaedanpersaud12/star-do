@@ -28,9 +28,12 @@ namespace StarDo.UI.Pages
 
         private ScrollableListComponent scrollableList;
         private readonly Rectangle dialogBounds;
+        private bool confirmingDelete;
 
         private static readonly string[] CategoryNames = { "Farm", "Processing", "Social", "Goals", "Quests" };
+        private static readonly int CategoryCount = Enum.GetValues(typeof(TaskCategory)).Length;
         private static readonly string[] PriorityNames = { "Daily", "Weekly", "Long-term" };
+        private static readonly int PriorityCount = Enum.GetValues(typeof(TaskPriority)).Length;
 
         private readonly int lineH;
         private readonly int btnH;
@@ -95,14 +98,25 @@ namespace StarDo.UI.Pages
         public void ReceiveLeftClick(int x, int y)
         {
             if (this.saveButton.containsPoint(x, y)) { this.SaveTask(); return; }
-            if (this.cancelButton.containsPoint(x, y)) { this.parentMenu.CloseTaskDetail(); return; }
+            if (this.cancelButton.containsPoint(x, y)) { this.confirmingDelete = false; this.parentMenu.CloseTaskDetail(); return; }
             if (this.deleteButton.containsPoint(x, y) && !this.isNew)
             {
-                this.taskManager.DeleteTask(this.task.Id);
-                Game1.playSound("trashcan");
-                this.parentMenu.CloseTaskDetail();
+                if (this.confirmingDelete)
+                {
+                    this.taskManager.DeleteTask(this.task.Id);
+                    Game1.playSound("trashcan");
+                    this.parentMenu.CloseTaskDetail();
+                }
+                else
+                {
+                    this.confirmingDelete = true;
+                    Game1.playSound("dwop");
+                }
                 return;
             }
+
+            // Clicking anywhere else resets delete confirmation
+            this.confirmingDelete = false;
 
             if (!this.dialogBounds.Contains(x, y))
             {
@@ -132,12 +146,12 @@ namespace StarDo.UI.Pages
             int optBtnW = (iw - this.spacing * 2) / 3;
             if (new Rectangle(ix, optY, optBtnW, this.btnH).Contains(x, y))
             {
-                this.task.Category = (TaskCategory)(((int)this.task.Category + 1) % 5);
+                this.task.Category = (TaskCategory)(((int)this.task.Category + 1) % CategoryCount);
                 Game1.playSound("shwip"); return;
             }
             if (new Rectangle(ix + optBtnW + this.spacing, optY, optBtnW, this.btnH).Contains(x, y))
             {
-                this.task.Priority = (TaskPriority)(((int)this.task.Priority + 1) % 3);
+                this.task.Priority = (TaskPriority)(((int)this.task.Priority + 1) % PriorityCount);
                 Game1.playSound("shwip"); return;
             }
             if (new Rectangle(ix + (optBtnW + this.spacing) * 2, optY, optBtnW, this.btnH).Contains(x, y))
@@ -289,7 +303,11 @@ namespace StarDo.UI.Pages
             DrawBtn(b, "Save", this.saveButton.bounds, Color.LightGreen);
             DrawBtn(b, "Cancel", this.cancelButton.bounds, Color.LightGray);
             if (!this.isNew)
-                DrawBtn(b, "Delete", this.deleteButton.bounds, Color.IndianRed);
+            {
+                string delText = this.confirmingDelete ? "Confirm?" : "Delete";
+                Color delColor = this.confirmingDelete ? Color.Red : Color.IndianRed;
+                DrawBtn(b, delText, this.deleteButton.bounds, delColor);
+            }
         }
 
         public void Cleanup()

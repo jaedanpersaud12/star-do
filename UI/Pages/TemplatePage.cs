@@ -298,15 +298,12 @@ namespace StarDo.UI.Pages
             if (this.taskManager.HasTasksForTemplate(template.Id))
             {
                 this.taskManager.RemoveTasksByTemplate(template.Id);
-                this.taskManager.Data.EnabledTemplateIds.Remove(template.Id);
                 Game1.playSound("trashcan");
             }
             else
             {
                 var task = TemplateProvider.CreateTaskFromTemplate(template, Game1.Date.TotalDays);
                 this.taskManager.AddTask(task);
-                if (!this.taskManager.Data.EnabledTemplateIds.Contains(template.Id))
-                    this.taskManager.Data.EnabledTemplateIds.Add(template.Id);
                 Game1.playSound("coin");
             }
             this.taskManager.Save();

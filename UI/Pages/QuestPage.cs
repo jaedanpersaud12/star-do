@@ -65,6 +65,11 @@ namespace StarDo.UI.Pages
                     Requester = order.requester.Value ?? "",
                     DaysLeft = order.GetDaysLeft()
                 };
+                if (order.objectives == null)
+                {
+                    this.specialOrders.Add(info);
+                    continue;
+                }
                 foreach (var obj in order.objectives)
                 {
                     if (obj == null) continue;
