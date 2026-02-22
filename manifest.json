@@ -1,13 +1,10 @@
-﻿{
-   "Name": "To Do List",
-   "Author": "eleanoot",
-   "Version": {
-      "MajorVersion": 1,
-      "MinorVersion": 0,
-      "PatchVersion": 0,
-      "Build": null
-   },
-   "Description": "Record the other little tasks you were up to.",
-   "UniqueID": "eleanoot.todolist",
-   "EntryDll": "ToDoMod.dll"
+{
+  "Name": "Star-Do Planner",
+  "Author": "eleanoot",
+  "Version": "2.0.0",
+  "Description": "A full-screen gameplay planner with rich tasks, recurring dailies, templates, and quest tracking.",
+  "UniqueID": "eleanoot.stardo",
+  "EntryDll": "StarDo.dll",
+  "MinimumApiVersion": "4.0.0",
+  "UpdateKeys": []
 }

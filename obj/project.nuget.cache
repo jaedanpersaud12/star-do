@@ -1,0 +1,12 @@
+{
+  "version": 2,
+  "dgSpecHash": "Se8YmZQQV7Y=",
+  "success": true,
+  "projectFilePath": "/Users/jaedan/Projects/star-do/StarDo.csproj",
+  "expectedPackageFiles": [
+    "/Users/jaedan/.nuget/packages/pathoschild.stardew.modbuildconfig/4.4.0/pathoschild.stardew.modbuildconfig.4.4.0.nupkg.sha512",
+    "/Users/jaedan/.nuget/packages/microsoft.netcore.app.ref/6.0.36/microsoft.netcore.app.ref.6.0.36.nupkg.sha512",
+    "/Users/jaedan/.nuget/packages/microsoft.aspnetcore.app.ref/6.0.36/microsoft.aspnetcore.app.ref.6.0.36.nupkg.sha512"
+  ],
+  "logs": []
+}

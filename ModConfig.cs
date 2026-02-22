@@ -1,28 +1,11 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Collections.Specialized;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using Microsoft.Xna.Framework.Input;
+using StardewModdingAPI;
 
-
-namespace ToDoMod
+namespace StarDo
 {
     class ModConfig
     {
-        public string OpenListKey { get; set; }
+        public SButton OpenListKey { get; set; } = SButton.F2;
 
-        public bool UseLargerFont { get; set; }
-
-        public bool OpenAtStartup { get; set; }
-
-        public ModConfig()
-        {
-            this.OpenListKey = Keys.F2.ToString();
-            this.UseLargerFont = false;
-            this.OpenAtStartup = false;
-        }
-
+        public bool OpenAtStartup { get; set; } = false;
     }
 }
