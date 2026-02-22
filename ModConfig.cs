@@ -2,7 +2,7 @@ using StardewModdingAPI;
 
 namespace StarDo
 {
-    class ModConfig
+    public class ModConfig
     {
         public SButton OpenListKey { get; set; } = SButton.F2;
 
