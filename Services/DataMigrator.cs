@@ -41,6 +41,25 @@ namespace StarDo.Services
                         raw["DataVersion"] = 3;
                         helper.Data.WriteJsonFile(path, raw);
                         monitor.Log("Migration v2 -> v3 complete.", LogLevel.Info);
+                        version = 3;
+                    }
+
+                    // v3 → v4: add season-targeting field (TargetSeason) for planner tasks
+                    if (version == 3)
+                    {
+                        monitor.Log("Migrating planner data v3 -> v4...", LogLevel.Info);
+                        var tasks = raw["Tasks"] as JArray;
+                        if (tasks != null)
+                        {
+                            foreach (JObject taskObj in tasks)
+                            {
+                                if (taskObj["TargetSeason"] == null)
+                                    taskObj["TargetSeason"] = null;
+                            }
+                        }
+                        raw["DataVersion"] = 4;
+                        helper.Data.WriteJsonFile(path, raw);
+                        monitor.Log("Migration v3 -> v4 complete.", LogLevel.Info);
                     }
 
                     // Deserialize from the (possibly migrated) JObject

@@ -45,12 +45,15 @@ namespace StarDo.UI.Pages
         private readonly int subItemH;
         private readonly int checkboxSize;
 
-        public TaskDetailPage(PlannerTask task, bool isNew, TaskManager taskManager, PlannerMenu parentMenu)
+        public TaskDetailPage(PlannerTask task, bool isNew, TaskManager taskManager, PlannerMenu parentMenu, Season? defaultSeason = null)
         {
             this.task = task;
             this.isNew = isNew;
             this.taskManager = taskManager;
             this.parentMenu = parentMenu;
+
+            if (!this.task.TargetSeason.HasValue && defaultSeason.HasValue)
+                this.task.TargetSeason = defaultSeason.Value;
 
             this.lineH = (int)Game1.smallFont.MeasureString("Tg").Y;
             this.btnH = this.lineH + BoxBorder * 2 + 8; // text + borders + 4px padding each side
@@ -127,25 +130,28 @@ namespace StarDo.UI.Pages
             string catText = CategoryNames[(int)this.task.Category];
             string priText = PriorityNames[(int)this.task.Priority];
             string recurText = this.task.IsRecurring ? "Recurring: ON" : "Recurring: OFF";
+            string seasonText = this.GetSeasonButtonText();
 
             optBtnWidths = new int[]
             {
                 MeasureBtnWidth(catText),
                 MeasureBtnWidth(priText),
-                MeasureBtnWidth(recurText)
+                MeasureBtnWidth(recurText),
+                MeasureBtnWidth(seasonText)
             };
             optBtnX = new int[]
             {
                 ix,
                 ix + optBtnWidths[0] + 8,
-                ix + optBtnWidths[0] + optBtnWidths[1] + 16
+                ix + optBtnWidths[0] + optBtnWidths[1] + 16,
+                ix + optBtnWidths[0] + optBtnWidths[1] + optBtnWidths[2] + 24
             };
 
             // Info lines (reset schedule, completion count, created date)
             infoY = optY + this.btnH + 8;
 
             // Sub-tasks
-            int infoLines = this.isNew ? 0 : 3;
+            int infoLines = this.isNew ? 0 : 4;
             subLabelY = infoY + infoLines * (this.lineH + 4) + this.spacing;
             addBtnW = MeasureBtnWidth("+ Add");
             subInputY = subLabelY + this.lineH + 8;
@@ -215,6 +221,11 @@ namespace StarDo.UI.Pages
             if (new Rectangle(optBtnX[2], optY, optBtnWidths[2], this.btnH).Contains(x, y))
             {
                 this.task.IsRecurring = !this.task.IsRecurring;
+                Game1.playSound("shwip"); return;
+            }
+            if (new Rectangle(optBtnX[3], optY, optBtnWidths[3], this.btnH).Contains(x, y))
+            {
+                this.CycleTargetSeason();
                 Game1.playSound("shwip"); return;
             }
 
@@ -306,11 +317,14 @@ namespace StarDo.UI.Pages
             string catText = CategoryNames[(int)this.task.Category];
             string priText = PriorityNames[(int)this.task.Priority];
             string recurText = this.task.IsRecurring ? "Recurring: ON" : "Recurring: OFF";
+            string seasonText = this.GetSeasonButtonText();
 
             DrawBtn(b, catText, optBtnX[0], optY, optBtnWidths[0], this.btnH, Color.LightBlue);
             DrawBtn(b, priText, optBtnX[1], optY, optBtnWidths[1], this.btnH, Color.LightGoldenrodYellow);
             DrawBtn(b, recurText, optBtnX[2], optY, optBtnWidths[2], this.btnH,
                 this.task.IsRecurring ? Color.LightGreen : Color.LightGray);
+            DrawBtn(b, seasonText, optBtnX[3], optY, optBtnWidths[3], this.btnH,
+                this.task.TargetSeason.HasValue ? SeasonHelper.GetColor(this.task.TargetSeason.Value) * 0.7f : Color.LightGray);
 
             // Info lines (for existing tasks)
             if (!this.isNew)
@@ -329,6 +343,13 @@ namespace StarDo.UI.Pages
                     }
                     : "One-off task (no reset)";
                 b.DrawString(Game1.smallFont, resetInfo, new Vector2(ix, iy), infoColor);
+                iy += this.lineH + 4;
+
+                // Season targeting
+                string targetSeasonText = this.task.TargetSeason.HasValue
+                    ? $"Season Target: {SeasonHelper.GetDisplayName(this.task.TargetSeason.Value)}"
+                    : "Season Target: Any (shows all seasons)";
+                b.DrawString(Game1.smallFont, targetSeasonText, new Vector2(ix, iy), infoColor);
                 iy += this.lineH + 4;
 
                 // Completion count
@@ -424,6 +445,30 @@ namespace StarDo.UI.Pages
             DrawBtn(b, text, r.X, r.Y, r.Width, r.Height, color);
         }
 
+        private string GetSeasonButtonText()
+        {
+            return this.task.TargetSeason.HasValue
+                ? $"Season: {SeasonHelper.GetDisplayName(this.task.TargetSeason.Value)}"
+                : "Season: Any";
+        }
+
+        private void CycleTargetSeason()
+        {
+            if (!this.task.TargetSeason.HasValue)
+            {
+                this.task.TargetSeason = Season.Spring;
+                return;
+            }
+
+            this.task.TargetSeason = this.task.TargetSeason.Value switch
+            {
+                Season.Spring => Season.Summer,
+                Season.Summer => Season.Fall,
+                Season.Fall => Season.Winter,
+                _ => null
+            };
+        }
+
         private void AddSubTask()
         {
             string text = this.subTaskInput.Text?.Trim();
@@ -455,7 +500,7 @@ namespace StarDo.UI.Pages
 
         private void UpdateContentHeight()
         {
-            int infoLines = this.isNew ? 0 : 3;
+            int infoLines = this.isNew ? 0 : 4;
             int h = this.lineH + 8 + this.inputH + this.spacing         // Title label + input
                    + this.lineH + 4 + this.inputH + this.spacing         // Notes label + input
                    + this.btnH + 8                                       // Options row

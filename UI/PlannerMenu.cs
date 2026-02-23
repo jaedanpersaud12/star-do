@@ -36,9 +36,9 @@ namespace StarDo.UI
             this.RebuildLayout();
         }
 
-        public void OpenTaskDetail(Models.PlannerTask task, bool isNew)
+        public void OpenTaskDetail(Models.PlannerTask task, bool isNew, Season? defaultSeason = null)
         {
-            this.taskDetailPage = new TaskDetailPage(task, isNew, this.taskManager, this);
+            this.taskDetailPage = new TaskDetailPage(task, isNew, this.taskManager, this, defaultSeason);
             this.showingDetail = true;
         }
 

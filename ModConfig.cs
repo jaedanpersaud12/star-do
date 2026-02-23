@@ -7,5 +7,7 @@ namespace StarDo
         public SButton OpenListKey { get; set; } = SButton.F2;
 
         public bool OpenAtStartup { get; set; } = false;
+
+        public bool ShowHudOverlay { get; set; } = true;
     }
 }

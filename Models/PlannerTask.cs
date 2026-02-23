@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using StardewValley;
 
 namespace StarDo.Models
 {
@@ -18,5 +19,6 @@ namespace StarDo.Models
         public int? CompletedDay { get; set; }
         public int SortOrder { get; set; }
         public int CompletionCount { get; set; }
+        public Season? TargetSeason { get; set; }
     }
 }

@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using StardewModdingAPI;
+using StardewValley;
 using StarDo.Models;
 
 namespace StarDo.Services
@@ -35,6 +36,11 @@ namespace StarDo.Services
                 {
                     this.monitor.Log($"Task '{task.Title}' has invalid priority {(int)task.Priority}, resetting to Monthly.", LogLevel.Warn);
                     task.Priority = TaskPriority.Monthly;
+                }
+                if (task.TargetSeason.HasValue && !Enum.IsDefined(typeof(Season), task.TargetSeason.Value))
+                {
+                    this.monitor.Log($"Task '{task.Title}' has invalid target season {(int)task.TargetSeason.Value}, clearing season target.", LogLevel.Warn);
+                    task.TargetSeason = null;
                 }
             }
         }
@@ -84,13 +90,15 @@ namespace StarDo.Services
             this.Save();
         }
 
-        public List<PlannerTask> GetActiveTasks(TaskCategory? categoryFilter = null)
+        public List<PlannerTask> GetActiveTasks(TaskCategory? categoryFilter = null, Season? seasonFilter = null)
         {
             var query = this.data.Tasks
                 .Where(t => !t.IsCompleted);
 
             if (categoryFilter.HasValue)
                 query = query.Where(t => t.Category == categoryFilter.Value);
+            if (seasonFilter.HasValue)
+                query = query.Where(t => !t.TargetSeason.HasValue || t.TargetSeason.Value == seasonFilter.Value);
 
             return query
                 .OrderBy(t => t.Priority)
@@ -98,17 +106,19 @@ namespace StarDo.Services
                 .ToList();
         }
 
-        public List<PlannerTask> GetCompletedTasks(TaskCategory? categoryFilter = null)
+        public List<PlannerTask> GetCompletedTasks(TaskCategory? categoryFilter = null, Season? seasonFilter = null)
         {
             var query = this.data.Tasks.Where(t => t.IsCompleted);
 
             if (categoryFilter.HasValue)
                 query = query.Where(t => t.Category == categoryFilter.Value);
+            if (seasonFilter.HasValue)
+                query = query.Where(t => !t.TargetSeason.HasValue || t.TargetSeason.Value == seasonFilter.Value);
 
             return query.OrderBy(t => t.SortOrder).ToList();
         }
 
-        public void ProcessDayStart(int currentDay, int dayOfMonth)
+        public void ProcessDayStart(int currentDay, int dayOfMonth, Season currentSeason)
         {
             if (currentDay <= this.data.LastProcessedDay)
                 return;
@@ -122,6 +132,8 @@ namespace StarDo.Services
             {
                 if (!task.IsRecurring || !task.IsCompleted)
                     continue;
+                if (task.TargetSeason.HasValue && task.TargetSeason.Value != currentSeason)
+                    continue;
 
                 bool shouldReset = task.Priority switch
                 {
@@ -130,6 +142,8 @@ namespace StarDo.Services
                     TaskPriority.Monthly => isSeasonStart,
                     _ => true
                 };
+                if (task.TargetSeason.HasValue && isSeasonStart)
+                    shouldReset = true;
 
                 if (shouldReset)
                 {

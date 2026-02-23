@@ -5,12 +5,27 @@
     <AssemblyName>StarDo</AssemblyName>
     <RootNamespace>StarDo</RootNamespace>
     <EnableHarmony>false</EnableHarmony>
-    <GamePath>C:\Games\Stardew Valley</GamePath>
+    <EnableModDeploy Condition="'$(EnableModDeploy)' == ''">false</EnableModDeploy>
+    <EnableModZip Condition="'$(EnableModZip)' == ''">false</EnableModZip>
+    <EnableGameDebugging Condition="'$(EnableGameDebugging)' == ''">false</EnableGameDebugging>
+    <GamePath Condition="'$(GamePath)' == ''">$([System.IO.Path]::Combine('$(MSBuildProjectDirectory)', '.game-refs'))</GamePath>
+    <LocalModOutputDir Condition="'$(LocalModOutputDir)' == ''">$([System.IO.Path]::Combine('$(MSBuildProjectDirectory)', 'artifacts', '$(AssemblyName)'))</LocalModOutputDir>
   </PropertyGroup>
 
   <ItemGroup>
     <PackageReference Include="Pathoschild.Stardew.ModBuildConfig" Version="4.4.0" />
     <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
   </ItemGroup>
+
+  <Target Name="CopyLocalModArtifacts" AfterTargets="Build">
+    <MakeDir Directories="$(LocalModOutputDir)" />
+    <ItemGroup>
+      <LocalModFiles Include="$(TargetDir)$(AssemblyName).dll" />
+      <LocalModFiles Include="$(TargetDir)$(AssemblyName).pdb" Condition="Exists('$(TargetDir)$(AssemblyName).pdb')" />
+      <LocalModFiles Include="$(TargetDir)$(AssemblyName).deps.json" Condition="Exists('$(TargetDir)$(AssemblyName).deps.json')" />
+      <LocalModFiles Include="$(MSBuildProjectDirectory)/manifest.json" />
+    </ItemGroup>
+    <Copy SourceFiles="@(LocalModFiles)" DestinationFolder="$(LocalModOutputDir)" SkipUnchangedFiles="true" />
+  </Target>
 
 </Project>

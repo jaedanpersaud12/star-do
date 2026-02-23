@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using StardewValley;
 using StarDo.Models;
 
 namespace StarDo.Services
@@ -324,7 +325,8 @@ namespace StarDo.Services
                 Priority = template.Priority,
                 IsRecurring = true,
                 TemplateId = template.Id,
-                CreatedDay = currentDay
+                CreatedDay = currentDay,
+                TargetSeason = GetTemplateTargetSeason(template)
             };
 
             foreach (var subText in template.SubTasks)
@@ -333,6 +335,16 @@ namespace StarDo.Services
             }
 
             return task;
+        }
+
+        private static Season? GetTemplateTargetSeason(TemplateDefinition template)
+        {
+            if (template.Seasons == null || template.Seasons.Length != 1)
+                return null;
+
+            return SeasonHelper.TryParseSeason(template.Seasons[0], out var season)
+                ? season
+                : null;
         }
     }
 }

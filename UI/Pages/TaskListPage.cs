@@ -22,6 +22,9 @@ namespace StarDo.UI.Pages
         private ClickableComponent addButton;
         private ClickableComponent newTaskButton;
 
+        private readonly ClickableComponent[] seasonButtons = new ClickableComponent[4];
+        private Season activeSeason;
+
         private readonly ClickableComponent[] filterButtons = new ClickableComponent[6];
         private readonly string[] filterLabels = { "All", "Farm", "Proc", "Social", "Goals", "Quests" };
         private TaskCategory? activeFilter;
@@ -38,6 +41,7 @@ namespace StarDo.UI.Pages
 
         // Layout constants computed from font
         private readonly int lineH;
+        private readonly int seasonBarHeight;
         private readonly int filterBarHeight;
         private readonly int toolbarHeight;
         private readonly int summaryHeight;
@@ -70,27 +74,44 @@ namespace StarDo.UI.Pages
 
             this.lineH = (int)Game1.smallFont.MeasureString("Tg").Y;
             this.btnH = this.lineH + 48;
+            this.seasonBarHeight = this.btnH + 8;
             this.filterBarHeight = this.btnH + 8;
             this.toolbarHeight = this.btnH + 8;
             this.summaryHeight = this.lineH + 8;
             this.sectionHeaderHeight = this.lineH + 16;
             this.sectionGap = 8;
 
-            // Filter buttons
+            this.activeSeason = SeasonHelper.GetCurrentSeason();
+
+            // Season tabs
+            int seasonX = contentArea.X;
+            for (int i = 0; i < SeasonHelper.OrderedSeasons.Length; i++)
+            {
+                string seasonText = SeasonHelper.GetDisplayName(SeasonHelper.OrderedSeasons[i]);
+                int textW = (int)Game1.smallFont.MeasureString(seasonText).X;
+                int btnWidth = textW + 56;
+                this.seasonButtons[i] = new ClickableComponent(
+                    new Rectangle(seasonX, contentArea.Y + 4, btnWidth, this.btnH),
+                    i.ToString()
+                ) { myID = 6800 + i };
+                seasonX += btnWidth + 4;
+            }
+
+            // Filter buttons (secondary row)
             int filterX = contentArea.X;
             for (int i = 0; i < filterLabels.Length; i++)
             {
                 int textW = (int)Game1.smallFont.MeasureString(filterLabels[i]).X;
                 int btnWidth = textW + 56;
                 filterButtons[i] = new ClickableComponent(
-                    new Rectangle(filterX, contentArea.Y + 4, btnWidth, this.btnH),
+                    new Rectangle(filterX, contentArea.Y + this.seasonBarHeight + 4, btnWidth, this.btnH),
                     i.ToString()
                 ) { myID = 7000 + i };
                 filterX += btnWidth + 4;
             }
 
             // Toolbar row: quick-add input + Add button + New Task button
-            int toolbarY = contentArea.Y + this.filterBarHeight;
+            int toolbarY = contentArea.Y + this.seasonBarHeight + this.filterBarHeight;
 
             int newBtnTextW = (int)Game1.smallFont.MeasureString("+ New Task").X;
             int newBtnW = newBtnTextW + 56;
@@ -113,8 +134,8 @@ namespace StarDo.UI.Pages
             ) { myID = 8001 };
 
             // Scrollable list — below summary
-            int listTop = contentArea.Y + this.filterBarHeight + this.toolbarHeight + this.summaryHeight;
-            int listHeight = contentArea.Height - this.filterBarHeight - this.toolbarHeight - this.summaryHeight - 8;
+            int listTop = contentArea.Y + this.seasonBarHeight + this.filterBarHeight + this.toolbarHeight + this.summaryHeight;
+            int listHeight = contentArea.Height - this.seasonBarHeight - this.filterBarHeight - this.toolbarHeight - this.summaryHeight - 8;
             this.scrollableList = new ScrollableListComponent(
                 new Rectangle(contentArea.X, listTop, contentArea.Width, Math.Max(listHeight, 100))
             );
@@ -124,11 +145,11 @@ namespace StarDo.UI.Pages
 
         public void Refresh()
         {
-            var allActive = this.taskManager.GetActiveTasks(this.activeFilter);
+            var allActive = this.taskManager.GetActiveTasks(this.activeFilter, this.activeSeason);
             this.dailyTasks = allActive.Where(t => t.Priority == TaskPriority.Daily).ToList();
             this.weeklyTasks = allActive.Where(t => t.Priority == TaskPriority.Weekly).ToList();
             this.monthlyTasks = allActive.Where(t => t.Priority == TaskPriority.Monthly).ToList();
-            this.completedTasks = this.taskManager.GetCompletedTasks(this.activeFilter);
+            this.completedTasks = this.taskManager.GetCompletedTasks(this.activeFilter, this.activeSeason);
             this.totalActiveCount = allActive.Count;
 
             int totalHeight = 0;
@@ -150,6 +171,19 @@ namespace StarDo.UI.Pages
 
         public void ReceiveLeftClick(int x, int y)
         {
+            // Season tabs
+            for (int i = 0; i < this.seasonButtons.Length; i++)
+            {
+                if (this.seasonButtons[i].containsPoint(x, y))
+                {
+                    this.activeSeason = SeasonHelper.OrderedSeasons[i];
+                    this.scrollableList.Reset();
+                    this.Refresh();
+                    Game1.playSound("shwip");
+                    return;
+                }
+            }
+
             // Filter buttons
             for (int i = 0; i < this.filterButtons.Length; i++)
             {
@@ -246,7 +280,7 @@ namespace StarDo.UI.Pages
                         }
                         else
                         {
-                            this.parentMenu.OpenTaskDetail(task, false);
+                            this.parentMenu.OpenTaskDetail(task, false, this.activeSeason);
                         }
                         return true;
                     }
@@ -334,6 +368,36 @@ namespace StarDo.UI.Pages
 
         public void Draw(SpriteBatch b)
         {
+            // ── Season tabs ──
+            for (int i = 0; i < this.seasonButtons.Length; i++)
+            {
+                Season season = SeasonHelper.OrderedSeasons[i];
+                bool isActive = this.activeSeason == season;
+
+                var sb = this.seasonButtons[i].bounds;
+                Color seasonColor = SeasonHelper.GetColor(season);
+                Color seasonBg = isActive ? seasonColor * 0.35f : Color.White;
+
+                IClickableMenu.drawTextureBox(b, Game1.mouseCursors,
+                    new Rectangle(384, 396, 15, 15),
+                    sb.X, sb.Y, sb.Width, sb.Height,
+                    seasonBg, 4f, false);
+
+                if (isActive)
+                {
+                    b.Draw(Game1.staminaRect,
+                        new Rectangle(sb.X + 20, sb.Y + sb.Height - 4, sb.Width - 40, 3),
+                        seasonColor);
+                }
+
+                string seasonText = SeasonHelper.GetDisplayName(season);
+                var ts = Game1.smallFont.MeasureString(seasonText);
+                Color textColor = isActive ? seasonColor : Game1.textColor;
+                Utility.drawTextWithShadow(b, seasonText, Game1.smallFont,
+                    new Vector2(sb.X + (sb.Width - ts.X) / 2, sb.Y + (sb.Height - ts.Y) / 2),
+                    textColor, 1f, -1f, -1, -1, 1f, 3);
+            }
+
             // ── Filter bar ──
             for (int i = 0; i < this.filterButtons.Length; i++)
             {
@@ -368,12 +432,13 @@ namespace StarDo.UI.Pages
             DrawButton(b, "+ New Task", this.newTaskButton.bounds, new Color(180, 210, 255));
 
             // ── Summary line ──
-            int summaryY = contentArea.Y + this.filterBarHeight + this.toolbarHeight;
+            int summaryY = contentArea.Y + this.seasonBarHeight + this.filterBarHeight + this.toolbarHeight;
             string summary = $"{this.totalActiveCount} active";
             if (this.completedTasks.Count > 0)
                 summary += $"  /  {this.completedTasks.Count} completed";
             if (this.activeFilter.HasValue)
                 summary += $"  ({this.filterLabels[(int)this.activeFilter.Value + 1]})";
+            summary += $"  •  {SeasonHelper.GetDisplayName(this.activeSeason)}";
             b.DrawString(Game1.smallFont, summary,
                 new Vector2(contentArea.X + 4, summaryY + 2), Color.Gray * 0.8f);
 
@@ -390,7 +455,7 @@ namespace StarDo.UI.Pages
             if (!hasAnyTasks)
             {
                 string msg = this.activeFilter.HasValue
-                    ? $"No {this.filterLabels[(int)this.activeFilter.Value + 1]} tasks."
+                    ? $"No {this.filterLabels[(int)this.activeFilter.Value + 1]} tasks for {SeasonHelper.GetDisplayName(this.activeSeason)}."
                     : "No tasks yet! Use '+ Add' for a quick task or '+ New Task' for details.";
                 var msgSize = Game1.smallFont.MeasureString(msg);
                 b.DrawString(Game1.smallFont, msg,
@@ -501,7 +566,8 @@ namespace StarDo.UI.Pages
                 CreatedDay = Game1.Date.TotalDays,
                 Category = this.activeFilter ?? TaskCategory.Farm,
                 Priority = TaskPriority.Daily,
-                IsRecurring = true
+                IsRecurring = true,
+                TargetSeason = this.activeSeason
             };
 
             this.taskManager.AddTask(task);
@@ -515,9 +581,10 @@ namespace StarDo.UI.Pages
             var task = new PlannerTask
             {
                 Category = this.activeFilter ?? TaskCategory.Farm,
-                Priority = TaskPriority.Daily
+                Priority = TaskPriority.Daily,
+                TargetSeason = this.activeSeason
             };
-            this.parentMenu.OpenTaskDetail(task, true);
+            this.parentMenu.OpenTaskDetail(task, true, this.activeSeason);
             Game1.playSound("bigSelect");
         }
     }

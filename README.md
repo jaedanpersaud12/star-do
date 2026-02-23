@@ -1,93 +1,138 @@
-# Star-Do: Stardew Valley Gameplay Planner
+# 🌾 Star-Do — A Stardew Valley Planner Mod
 
-A full-screen tabbed gameplay planner mod for [Stardew Valley](http://stardewvalley.net/). Track tasks with notes, sub-task checklists, categories, priorities, daily recurring resets, pre-built templates, and in-game quest integration.
+> Organize your farm life like a proper Valley legend.
 
-## Contents
-* [Features](#features)
-* [Install](#install)
-* [Build from Source](#build-from-source)
-* [Use](#use)
-* [Configure](#configure)
-* [Versions](#versions)
+Star-Do is an in-game planner for [Stardew Valley](http://stardewvalley.net/) that gives you a clean, tabbed menu for daily chores, long-term goals, templates, and quest tracking.
 
-## Features
+---
 
-- **Rich Tasks** — Each task has a title, notes ("why am I doing this?"), sub-task checklist, category, and priority level
-- **Daily Recurring Tasks** — Mark tasks as recurring and they auto-reset every morning
-- **Category Filtering** — Filter by Farm, Processing, Social, Goals, or Quests
-- **Pre-Built Templates** — One-click enable daily checklists: Animal Chores, Processing Check, Harvest & Replant, Tapper Collection
-- **Quest Integration** — View active quests and special orders with progress bars, all in one place
-- **Full-Screen Tabbed UI** — Three tabs: Tasks, Quests, Templates
-- **Gamepad Support** — LB/RB to switch tabs, full controller navigation
-- **Per-Save Data** — Each save file has its own task list
-- **Data Migration** — Automatically migrates tasks from the original To Do List mod
+## ✨ Why Star-Do?
 
-## Install
+- Keep your **daily routine** tight (animals, machines, greenhouse, etc.)
+- Track **sub-tasks** and completion history
+- Split work by **category** and **priority**
+- Reuse **seasonal and routine templates** with one click
+- View **quests + special orders** without leaving your planner flow
 
-1. Install [SMAPI](https://smapi.io/) (4.0.0 or later).
-2. Drop the `StarDo` folder into your `Stardew Valley/Mods` directory.
-3. Run the game using SMAPI.
+---
 
-## Build from Source
+## 🧺 Feature Highlights
 
-Requires the [.NET 6 SDK](https://dotnet.microsoft.com/download/dotnet/6.0) (or later) and a Stardew Valley + SMAPI installation.
+### ✅ Task System
+- Rich tasks: title, notes, checklist, category, priority
+- Recurring tasks with day-start reset behavior
+- Quick add + full detail editor
+- Per-save JSON storage and versioned data migration
 
-### Windows
+### 📚 Planner Pages
+- **Tasks** — active/completed task management
+- **Quests** — quest + special order overview
+- **Templates** — prebuilt Stardew routine templates
 
-1. Install the .NET SDK if you haven't already.
-2. Clone this repo:
-   ```
-   git clone https://github.com/your-username/star-do.git
-   cd star-do
-   ```
-3. The mod build package auto-detects your game folder from common install locations. If it can't find it, set the `GamePath` environment variable or create a `stardew.targets` file:
-   ```xml
-   <!-- stardew.targets (place next to StarDo.csproj) -->
-   <Project>
-     <PropertyGroup>
-       <GamePath>C:\Program Files (x86)\Steam\steamapps\common\Stardew Valley</GamePath>
-     </PropertyGroup>
-   </Project>
-   ```
-4. Build:
-   ```
-   dotnet build
-   ```
-5. The mod is automatically deployed to your `Mods` folder on build. Launch the game with SMAPI to test.
+### 🎮 Quality of Life
+- Full-screen in-game menu (SMAPI style)
+- Gamepad tab switching (LB/RB)
+- Configurable hotkey
 
-### macOS / Linux
+---
 
-Same steps as Windows. Common game paths:
-- **macOS (Steam):** `~/Library/Application Support/Steam/steamapps/common/Stardew Valley`
-- **macOS (GOG):** `/Applications/Stardew Valley.app/Contents/MacOS`
-- **Linux (Steam):** `~/.steam/steam/steamapps/common/Stardew Valley`
+## 📦 Install
 
-## Use
+1. Install [SMAPI](https://smapi.io/) (4.0.0+).
+2. Copy the `StarDo` mod folder into `Stardew Valley/Mods/`.
+3. Launch Stardew Valley through SMAPI.
 
-- Press **F2** (configurable) to open the planner.
-- **Tasks tab:** Quick-add tasks at the top, or click **+ Add** for a detailed editor with notes, sub-tasks, category, priority, and recurring toggle. Click a task's checkbox to complete it. Click the row to edit. Completed tasks appear in a "Done Today" section. Recurring tasks reset the next morning.
-- **Quests tab:** Shows your active quests and special orders with objectives and progress bars.
-- **Templates tab:** Enable/disable pre-built daily task templates (Animal Chores, Processing Check, etc.). Enabling a template creates recurring tasks you can further customize.
+---
 
-## Configure
+## 🛠️ Build from Source
 
-Edit `config.json` in the mod folder:
+Requires [.NET 6 SDK](https://dotnet.microsoft.com/download/dotnet/6.0) or newer.
+
+```bash
+git clone https://github.com/your-username/star-do.git
+cd star-do
+dotnet build
+```
+
+Build artifacts are copied to:
+
+```text
+artifacts/StarDo/
+```
+
+(includes mod DLL + `manifest.json`).
+
+---
+
+## 🔁 Cross-Machine Dev Workflow (macOS dev → Windows test)
+
+If your dev machine does **not** have Stardew + SMAPI installed, use local reference DLLs.
+
+### 1) Create the refs folder
+
+```text
+.game-refs/
+```
+
+### 2) Copy required references into `.game-refs/`
+
+- `Stardew Valley.dll`
+- `StardewValley.GameData.dll`
+- `MonoGame.Framework.dll`
+- `xTile.dll`
+- `StardewModdingAPI.dll`
+- `smapi-internal/SMAPI.Toolkit.CoreInterfaces.dll`
+
+### 3) Build locally
+
+```bash
+dotnet build
+```
+
+### 4) Move output to your Windows test machine
+
+Copy `artifacts/StarDo/` into your mod folder and test in-client.
+
+---
+
+## 🧭 Usage
+
+- Press **F2** (default) to open Star-Do.
+- **Tasks tab**: quick add or create detailed tasks.
+- **Quests tab**: inspect active quests and special orders.
+- **Templates tab**: enable reusable routine checklists.
+
+---
+
+## ⚙️ Config
+
+Edit `config.json` in your mod folder:
 
 | Setting | Default | Description |
-|---------|---------|-------------|
-| `OpenListKey` | `F2` | Button to open the planner. Uses SMAPI's [SButton](https://stardewvalleywiki.com/Modding:Player_Guide/Key_Bindings) values. |
-| `OpenAtStartup` | `false` | Automatically open the planner when a save file loads. |
+|---|---:|---|
+| `OpenListKey` | `F2` | Key/button to open Star-Do. Uses SMAPI [SButton values](https://stardewvalleywiki.com/Modding:Player_Guide/Key_Bindings). |
+| `OpenAtStartup` | `false` | Opens the planner automatically when save loads. |
+| `ShowHudOverlay` | `true` | Shows the compact top-left gameplay task HUD. |
 
-## Versions
+---
 
-2.0.0:
-- Complete rewrite as full-screen tabbed planner
-- Rich tasks with notes, sub-tasks, categories, priorities
-- Daily recurring task auto-reset
-- Pre-built task templates
-- Game quest and special order integration
-- Gamepad support
-- Modernized to .NET 6 / SMAPI 4.0
+## 🧱 Project Layout
 
-1.0.0:
-- Initial release (simple to-do list)
+```text
+Models/      # data models + enums
+Services/    # migration, task logic, templates
+UI/          # menu, pages, reusable UI components
+ModEntry.cs  # SMAPI entry point + event wiring
+```
+
+---
+
+## 🗂️ Version Notes
+
+### 2.0.0
+- Full rewrite into tabbed planner UI
+- Rich tasks + recurrence + templates + quests
+- Modernized for .NET 6 / SMAPI 4+
+
+### 1.0.0
+- Initial simple to-do list release
