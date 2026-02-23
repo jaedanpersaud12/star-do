@@ -68,6 +68,9 @@ artifacts/StarDo/
 
 If your dev machine does **not** have Stardew + SMAPI installed, use local reference DLLs.
 
+> Star-Do only uses `.game-refs/` when `Stardew Valley.dll` exists there.  
+> If not, normal SMAPI auto-detection is used.
+
 ### 1) Create the refs folder
 
 ```text

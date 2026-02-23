@@ -8,7 +8,9 @@
     <EnableModDeploy Condition="'$(EnableModDeploy)' == ''">false</EnableModDeploy>
     <EnableModZip Condition="'$(EnableModZip)' == ''">false</EnableModZip>
     <EnableGameDebugging Condition="'$(EnableGameDebugging)' == ''">false</EnableGameDebugging>
-    <GamePath Condition="'$(GamePath)' == ''">$([System.IO.Path]::Combine('$(MSBuildProjectDirectory)', '.game-refs'))</GamePath>
+    <LocalGameRefsPath>$([System.IO.Path]::Combine('$(MSBuildProjectDirectory)', '.game-refs'))</LocalGameRefsPath>
+    <LocalGameRefsDllPath>$([System.IO.Path]::Combine('$(LocalGameRefsPath)', 'Stardew Valley.dll'))</LocalGameRefsDllPath>
+    <GamePath Condition="'$(GamePath)' == '' and Exists('$(LocalGameRefsDllPath)')">$(LocalGameRefsPath)</GamePath>
     <LocalModOutputDir Condition="'$(LocalModOutputDir)' == ''">$([System.IO.Path]::Combine('$(MSBuildProjectDirectory)', 'artifacts', '$(AssemblyName)'))</LocalModOutputDir>
   </PropertyGroup>
 
